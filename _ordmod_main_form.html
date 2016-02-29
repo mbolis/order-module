@@ -1,0 +1,62 @@
+<div data-bind="visible: page() === 0">
+  <!-- SPLASH -->
+</div>
+<div data-bind="visible: page() === 1">
+  GAS??
+  CONTATTO??
+</div>
+<div data-bind="foreach: pagine">
+  <div data-bind="visible: tipologia === $root.current()">
+    <em data-bind="text: tipologia.toUpperCase()"></em>
+    <ul data-bind="foreach: prodotti">
+      <li data-bind="text: nome"></li>
+    </ul>
+  </div>
+</div>
+<div data-bind="visible: page() === 4">
+  <form id="om_order_form">
+    RIEPILOGO
+  </form>
+</div>
+<div data-bind="if: valid">
+  <button style="float:left" data-bind="visible: isNotFirstPage, click: back">Indietro</button>
+  <button style="float:right" data-bind="visible: isLastPage, click: submit">Invia</button>
+  <button style="float:right" data-bind="visible: isNotLastPage, click: next">Avanti</button>
+</div>
+<script>
+  var tipologie = ko.observableArray([]);
+  var prodotti = ko.observableArray([]);
+  var dataApertura = ko.observable();
+  var dataChiusura = ko.observable();
+  var page = ko.observable(0);
+  var lastPage = ko.pureComputed(function() {
+    return 2 + tipologie().length;
+  });
+  var viewModel = {
+    page : page,
+    isFirstPage : ko.pureComputed(function() { return page() === 0 }),
+    isNotFirstPage : ko.pureComputed(function() { return page() > 0 }),
+    isLastPage : ko.pureComputed(function() { return page() === lastPage() }),
+    isNotLastPage : ko.pureComputed(function() { return page() < lastPage() }),
+    next : function() { page(page() + 1) },
+    back : function() { page(page() - 1) },
+    submit : function() {},
+    valid : ko.observable(true),
+    current : ko.pureComputed(function() { return tipologie()[page() - 2] }),
+    pagine : ko.pureComputed(function() {
+      var pagine = [], typologies = tipologie(), products = prodotti();
+      for (var i in typologies) {
+        var pagina = [], tipologia = typologies[i];
+        for (var p in products) {
+          p = products[p];
+          if (p.tipologia === tipologia) {
+            pagina.push(p);
+          }
+        }
+        pagine[i] = { tipologia : tipologia, prodotti : pagina };
+      }
+      return pagine;
+    })
+  };
+  ko.applyBindings(viewModel);
+</script>

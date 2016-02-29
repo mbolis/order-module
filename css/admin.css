@@ -1,0 +1,67 @@
+.om-order-list li {
+  padding : 0.25em 0.5em;
+  border-radius : 0.5em;
+}
+.om-order-list li h3 {
+  display : inline-block;
+  margin-left : 1em;
+}
+.om-date-info {
+  margin : 0 1em;
+  line-height : 1.8em;
+}
+.om-order-select:hover {
+  background-color : #bcf;
+  cursor : pointer;
+}
+.om-new-order {
+  float : right;
+  margin : 1em;
+  padding : 0.125em 0.5em;
+  line-height : 1.5em;
+  border : 1px solid transparent;
+  border-radius : 0.25em;
+  background-color : #abf;
+  color : #23282d;
+  text-decoration : none;
+}
+.om-new-order:hover {
+  background-color : #89f;
+  border-color : #abf;
+  color : #23282d;
+}
+.om-form-row {
+  padding : 0.25em;
+}
+.om-form-row label {
+  display : inline-block;
+  vertical-align : baseline;
+  width : 16%;
+}
+.om-form-row input[type='text'] {
+  width : 32%;
+}
+.om-form-row input.om-error {
+  border-color : #f99;
+}
+span.om-error-message {
+  display : inline-block;
+}
+.om-error-message {
+  padding : 0.125em 0.25em;
+  color : red;
+}
+.om-form-dates {
+  border : 1px solid gainsboro;
+  padding : 0.25em;
+  margin-bottom : 1em;
+}
+.om-form-dates label {
+  margin-left : 4em;
+  display : inline-block;
+  vertical-align : baseline;
+  width : 10%;
+}
+input[type='submit'].button {
+  margin-top : 1em;
+}
