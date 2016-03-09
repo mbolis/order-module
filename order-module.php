@@ -22,11 +22,14 @@ function om_show_menu_entries() {
     add_submenu_page('om-orders', 'Apri un Nuovo Ordine', 'Nuovo Ordine', 'manage_options', 'om-new-order', 'om_new_order');
   }
   add_submenu_page('om-orders', 'Opzioni Ordini', 'Opzioni', 'manage_options', 'om-options', 'om_options');
+  add_submenu_page('om-orders', 'Elenco Prodotti', 'Prodotti', 'manage_options', 'om-products', 'om_products');
 }
 function om_orders() {
   if (!current_user_can('manage_options'))  {
     wp_die(__('You do not have sufficient permissions to access this page.'));
   }
+
+  $success = $_GET['success'];
 
   $orders = om_get_top_orders();
   if (strtotime($orders[0]->dt_chiusura) > time()) {
@@ -46,26 +49,98 @@ function om_options() {
   $errors = array();
   if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_POST['submit']) {
     $main_form_page = trim($_POST['main_form_page']);
-    if ($main_form_page && preg_match('/^[-_a-zA-Z0-9]+$/', $main_form_page)) {
-      update_option('om_main_form_page', $main_form_page);
-      $success = TRUE;
-    } else {
+    if (!$main_form_page || !preg_match('/^[-_a-zA-Z0-9]+$/', $main_form_page)) {
       $errors['main_form_page'] = 'Specificare un valore valido. Sono ammessi lettere, numeri, "-" e "_".';
+    } elseif ($main_form_page !== get_option('om_main_form_page') && get_page_by_path($main_form_page)) {
+      $errors['main_form_page'] = 'Il nome specificato &egrave; gi&agrave; in uso da un\'altra pagina.';
     }
 
     $product_typologies = preg_split('/\\s*,\\s*/', trim($_POST['product_typologies']));
-    if ($product_typologies) {
-      update_option('om_product_typologies', implode(',', $product_typologies));
-      $product_typologies = implode(',', $product_typologies);
-      $success = TRUE;
-    } else {
+    if (!$product_typologies) {
       $errors['product_typologies'] = 'Occorre specificare almeno una tipologia.';
     }
+
+    $product_units = preg_split('/\\s*,\\s*/', trim($_POST['product_units']));
+    if (!$product_units) {
+      $errors['product_units'] = 'Occorre specificare almeno un\' unit&agrave; di misura.';
+    }
+    for ($i = 0; $i < count($product_units); $i++) {
+      $unit = preg_split('/\\s*\\/\\s*/', $product_units[$i]);
+      if (count($unit) > 2) {
+        $errors['product_units'] = 'C\'&egrave; una barra ("/") di troppo nella lista.';
+        break;
+      }
+      if (count($unit) == 2) {
+        $unit = $unit[0] . '/' . $unit[1];
+      } else {
+        $unit = $unit[0];
+      }
+      $product_units[$i] = $unit;
+    }
+
+    if (!$errors) {
+      update_option('om_main_form_page', $main_form_page);
+      wp_update_post(array(
+        'ID' => get_option('om_main_form_page_id'),
+        'post_name' => $main_form_page,
+      ));
+      $product_typologies = implode(', ', $product_typologies);
+      update_option('om_product_typologies', $product_typologies);
+      $product_units = implode(', ', $product_units);
+      update_option('om_product_units', $product_units);
+      $success = TRUE;
+    }
+
   } else {
     $main_form_page = get_option('om_main_form_page');
     $product_typologies = get_option('om_product_typologies');
+    $product_units = get_option('om_product_units');
   }
   include 'options_form.php';
+  // TODO include 'uninstall_form.php';
+  // $current = get_settings('active_plugins');
+  // array_splice($current, array_search("myplugin.php", $current), 1 );
+  // update_option('active_plugins', $current);
+  // header('Location: plugins.php?deactivate=true');
+  // die();
+}
+function om_products() {
+  if (!current_user_can('manage_options'))  {
+    wp_die(__('You do not have sufficient permissions to access this page.'));
+  }
+  
+  if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_POST['submit']) {
+    $success = TRUE;
+    $to_update = $_POST['update'];
+    if ($to_update) {
+      $success &= om_update_products($to_update);
+    }
+    $to_insert = $_POST['insert'];
+    if ($to_insert) {
+      $success &= om_insert_products($to_insert);
+    }
+    $to_delete = $_POST['delete'];
+    if ($to_delete) {
+      $success &= om_delete_products($to_delete);
+    }
+    $errors = !$success;
+  }
+
+  $units = explode(', ', get_option('om_product_units'));
+  sort($units);
+  $units_plural = array();
+  for ($i = 0; $i < count($units); $i++) {
+    $unit = split('/', $units[$i]);
+    $units[$i] = $unit[0];
+    $units_plural[$unit[0]] = $unit[1] ? $unit[1] : $unit[0];
+  }
+
+  $typologies = explode(', ', get_option('om_product_typologies'));
+  $products = om_get_products_data($order_by='nome');
+  $pages = get_pages(array(
+    'sort_column' => 'post_title'
+  ));
+  include 'products_form.php';
 }
 function om_new_order() {
   if (!current_user_can('manage_options'))  {
@@ -97,7 +172,7 @@ function om_new_order() {
           $prodotto['prezzo'] = $prezzo;
           $prodotti[] = $prodotto;
         } else {
-          $errors_prodotti[$i] = 'Il prezzo non indica un valore numerico.';
+          $errors_prodotti[$i] = 'Il prezzo inserito non indica un valore numerico.';
         }
       }
     }
@@ -114,25 +189,10 @@ function om_new_order() {
 
       if (om_save_order($ordine, $prodotti)) {
 
-        global $user_ID;
-        $page_id = get_option('om_main_form_page_id');
-        $page = array(
-          'ID' => $page_id,
-          'post_type' => 'page',
-          'post_name' => get_option('om_main_form_page'),
-          'post_title' => "Modulo d'Ordine",
-          'post_status' => 'publish',
-          'post_content' => file_get_contents('_ordmod_main_form.html', TRUE),
-          'post_parent' => 0,
-          'post_author' => $user_ID,
-          'comment_status' => 'closed',
-        );
-        $page_id = wp_insert_post($page);
-        update_option('om_main_form_page_id', $page_id);
 
         ?>
           Attendere prego...
-          <script>alert(<?php echo $page_id; ?>);location.href = '<?php echo admin_url('/admin.php?page=om-orders&success=' . urlencode('Nuovo ordine aperto. Data di chiusura: ' . date('d/m/Y H:i', $dt_chiusura))); ?>';</script>
+          <script>location.href = '<?php echo admin_url('/admin.php?page=om-orders&success=' . urlencode('Nuovo ordine aperto. Data di chiusura: ' . date('d/m/Y H:i', $dt_chiusura))); ?>';</script>
         <?php
 
         exit;
@@ -188,31 +248,42 @@ function om_order_form_data($content) {
   if ($post->post_name === get_option('om_main_form_page') && current_user_can('read')) {
     $order = om_get_top_orders(1)[0];
     if (!$order) {
-      return 'Nessun ordine';
+      return 'Nessun ordine'; // TODO
     }
     $now = time();
     $dt_apertura = strtotime($order->dt_apertura . 'Europe/Rome');
     $dt_chiusura = strtotime($order->dt_chiusura . 'Europe/Rome');
     if ($dt_apertura > $now) {
-      return 'Ordine non ancora aperto';
+      return 'Ordine non ancora aperto'; // TODO
     }
     if ($now > $dt_chiusura) {
-      return 'Ordine scaduto';
+      return 'Ordine scaduto'; // TODO
     }
+
+    $content = file_get_contents('_ordmod_main_form.html', TRUE);
 
     $splash_page = get_page_by_path(get_option('om_main_form_splash_page'));
     if ($splash_page) {
-      $content = preg_replace('/<!--\\s*SPLASH\\s*-->/', $splash_page->post_content, $content);
+      $content .= '<script type="text/html" id="splash">' . $splash_page->post_content . '</script>';
     }
 
-    $products = om_get_order_products($order->id);
     $tipologie = preg_split('/\\s*,\\s*/', trim(get_option('om_product_typologies')));
+    $products_hash = array();
+    foreach ($tipologie as $tipologia) {
+      $products_hash[$tipologia] = array();
+    }
+    $products = om_get_order_products($order->id);
+    foreach ($products as $product) {
+      $products_hash[$product->tipologia][] = $product;
+    }
+    $products_data = array();
+    foreach ($products_hash as $typology => $products) {
+      $products_data[] = array($typology, $products);
+    }
+    
     $content .= '
       <script>
-        tipologie(' . json_encode($tipologie) . ');
-        dataApertura(new Date(' . $dt_apertura . '));
-        dataChiusura(new Date(' . $dt_chiusura . '));
-        prodotti(' . json_encode($products) . ');
+        jQuery(function() { loadProducts(' . json_encode($products_data) . ') });
       </script>';
   }
   return $content;
@@ -228,12 +299,17 @@ function om_admin_scripts() {
   wp_enqueue_script('jquery-ui.timepicker', plugins_url('jquery-ui/jquery-ui.timepicker.js', __FILE__));
   wp_enqueue_script('jquery-ui.datepicker-it', plugins_url('jquery-ui/jquery-ui.datepicker-it.js', __FILE__));
   wp_enqueue_script('jquery-ui.timepicker-it', plugins_url('jquery-ui/jquery-ui.timepicker-it.js', __FILE__));
+  wp_enqueue_script('knockout', plugins_url('js/knockout.js', __FILE__));
 }
 
 add_action('wp_enqueue_scripts', 'om_scripts');
 function om_scripts() {
-  wp_enqueue_style('om-page', plugins_url('css/style.css', __FILE__));
-  wp_enqueue_script('knockout', plugins_url('js/knockout.js', __FILE__));
+  global $post;
+  if ($post->post_name === get_option('om_main_form_page') && current_user_can('read')) {
+    wp_enqueue_style('om-page', plugins_url('css/style.css', __FILE__));
+    wp_enqueue_script('knockout', plugins_url('js/knockout.js', __FILE__));
+    wp_enqueue_script('knockout-bindings', plugins_url('js/bindings.js', __FILE__), '', '', true);
+  }
 }
 
 ?>

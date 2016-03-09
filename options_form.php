@@ -25,13 +25,25 @@
           <input type="text" readonly id="om_main_form_link" value="<?php echo get_site_url() . '/' . $main_form_page; ?>" />
         </fieldset>
         <fieldset class="om-form-row">
-          <label for="om_product_typologies">Tipologie di prodotto </label>
+          <label for="om_product_typologies">Tipologie di prodotto</label>
           <?php $error = $errors['product_typologies']; ?>
           <input type="text" id="om_product_typologies" name="product_typologies" <?php if($error) { ?>class="om-error"<?php } ?> value="<?php echo $product_typologies; ?>" />
-          <div style="margin-left:1em;font-size:80%">
+          <div style="margin:0 0 1em 1em;font-size:80%">
             Elencare le tipologie disponibili per categorizzare i prodotti, separate da una virgola.<br>
-            Ogni tipologia verrà visualizzata in una pagina a s&eacute; stante del modulo d&#039; ordine.<br>
-            L&#039;ordine delle pagine del modulo &egrave; definito dall&#039; ordinamento di questa lista.
+            Ogni tipologia verr&agrave; visualizzata in una pagina a s&eacute; stante del modulo d' ordine.<br>
+            L'ordine delle pagine del modulo &egrave; definito dall' ordinamento di questa lista.
+          </div>
+          <?php if($error) { ?>
+            <span class="om-error-message"><?php echo $error; ?></span>
+          <?php } ?>
+        </fieldset>
+        <fieldset class="om-form-row">
+          <label for="om_product_units">Unit&agrave; di misura</label>
+          <?php $error = $errors['product_units']; ?>
+          <input type="text" id="om_product_units" name="product_units" <?php if($error) { ?>class="om-error"<?php } ?> value="<?php echo $product_units; ?>" />
+          <div style="margin:0 0 1em 1em;font-size:80%">
+            Elencare le unit&agrave; di misura usate per i prodotti, separate da una virgola.<br>
+            Queste unit&agrave; di misura saranno disponibili per la selezione nella schermata dei Prodotti.
           </div>
           <?php if($error) { ?>
             <span class="om-error-message"><?php echo $error; ?></span>

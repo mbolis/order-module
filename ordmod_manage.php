@@ -1,3 +1,8 @@
+<?php if($success) { ?>
+  <div class="updated">
+    <p><?php echo $success; ?></p>
+  </div>
+<?php } ?>
 <div class="wrap">
   <div id="col-container">
     <div id="col-left">
@@ -30,3 +35,10 @@
     </div>
   </div>
 </div>
+<script>
+  (function($) {
+    $('.updated,.error').on('click', function() {
+      $(this).remove();
+    });
+  }(jQuery));
+</script>

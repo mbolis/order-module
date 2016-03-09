@@ -33,13 +33,34 @@
 .om-form-row {
   padding : 0.25em;
 }
-.om-form-row label {
+.om-form-row label, .om-form-row select {
   display : inline-block;
   vertical-align : baseline;
-  width : 16%;
+}
+.om-form-row .smallest, .om-form-row input[type='text'].smallest {
+  width : 4%;
+}
+.om-form-row .smaller, .om-form-row input[type='text'].smaller {
+  width : 6%;
+}
+.om-form-row .small, .om-form-row input[type='text'].small {
+  width : 12%;
+}
+.om-form-row .medium {
+  width : 18%;
+}
+.om-form-row .large {
+  width : 32%;
+}
+.om-form-row .header {
+  text-align : center;
+  cursor : default;
 }
 .om-form-row input[type='text'] {
   width : 32%;
+}
+.om-form-row input[type='text'].medium {
+  width : 18%;
 }
 .om-form-row input.om-error {
   border-color : #f99;
@@ -64,4 +85,43 @@ span.om-error-message {
 }
 input[type='submit'].button {
   margin-top : 1em;
+}
+label.om-delete-product, label.om-add-product, label.om-undelete-product {
+  display: inline-block;
+  font-family: dashicons;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  height: 20px;
+  line-height: 1;
+  text-align: center;
+  text-decoration: inherit;
+  vertical-align: middle;
+}
+.om-delete-product::before {
+  content : "\f158";
+  opacity : 0.5;
+}
+.om-delete-product:hover::before {
+  content : "\f153";
+  opacity : 0.8;
+  cursor : pointer;
+}
+.om-add-product::before {
+  content : "\f132";
+  opacity : 0.5;
+}
+.om-add-product:hover::before {
+  content : "\f502";
+  opacity : 0.8;
+  cursor : pointer;
+}
+.om-undelete-product::before {
+  content : "\f132";
+  opacity : 0.2;
+}
+.om-undelete-product:hover::before {
+  content : "\f502";
+  opacity : 0.5;
+  cursor : pointer;
 }

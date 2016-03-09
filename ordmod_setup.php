@@ -12,53 +12,59 @@ function om_install() {
 
   // Create order table
   $order_sql = "CREATE TABLE $order_table (
-    id smallint(5) NOT NULL AUTO_INCREMENT  PRIMARY KEY,
+    id int(11) NOT NULL AUTO_INCREMENT,
     dt_apertura datetime NOT NULL,
     dt_chiusura datetime NOT NULL,
     dt_modifica datetime,
-    dt_accesso datetime
+    dt_accesso datetime,
+    PRIMARY KEY  (id)
   ) $charset_collate;";
 
   // Create order row table
   $order_row_sql = "CREATE TABLE $order_row_table (
-    id mediumint(9) NOT NULL AUTO_INCREMENT  PRIMARY KEY,
-    id_ordine smallint(5) NOT NULL,
-    cliente varchar(100) NOT NULL,
-    id_prodotto_ordine mediumint(9) NOT NULL,
-    quantita decimal(6,3) NOT NULL,
-    id_contatto smallint(4) NOT NULL,
+    id int(11) NOT NULL AUTO_INCREMENT,
+    id_ordine int(11) NOT NULL,
+    cliente varchar(255) NOT NULL,
+    id_prodotto_ordine int(11) NOT NULL,
+    quantita decimal(11,3) NOT NULL,
+    id_contatto int(11) NOT NULL,
     dt_modifica datetime,
     dt_accesso datetime
+    PRIMARY KEY  (id)
   ) $charset_collate;";
   
   // Create order product table
   $order_product_sql = "CREATE TABLE $order_product_table (
-    id mediumint(9) NOT NULL AUTO_INCREMENT  PRIMARY KEY,
-    id_ordine smallint(5) NOT NULL,
-    id_prodotto smallint(5) NOT NULL,
+    id int(11) NOT NULL AUTO_INCREMENT,
+    id_ordine int(11) NOT NULL,
+    id_prodotto int(11) NOT NULL,
     prezzo decimal(5,2) NOT NULL
+    PRIMARY KEY  (id)
   ) $charset_collate;";
 
   // Create product table
   $product_sql = "CREATE TABLE $product_table (
-    id smallint(5) NOT NULL AUTO_INCREMENT  PRIMARY KEY,
+    id int(11) NOT NULL AUTO_INCREMENT,
     nome varchar(255) NOT NULL,
     tipologia varchar(30) NOT NULL,
     unita_misura varchar(20) NOT NULL,
-    provenienza varchar(255),
+    unita_misura_plurale varchar(20) NOT NULL,
+    provenienza text,
     pagina varchar(255),
     prezzo decimal(5,2),
     attivo bit
+    PRIMARY KEY  (id)
   ) $charset_collate;";
 
   // Create client contact table
   $client_sql = "CREATE TABLE $client_table (
-    id smallint(4) NOT NULL AUTO_INCREMENT  PRIMARY KEY,
+    id int(11) NOT NULL AUTO_INCREMENT,
     nome varchar(255) NOT NULL,
     nome_contatto varchar(255),
-    area varchar(30) NOT NULL,
+    area varchar(255) NOT NULL,
     indirizzo text NOT NULL,
     telefono varchar(30)
+    PRIMARY KEY  (id)
   ) $charset_collate;";
   
   require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
@@ -119,14 +125,65 @@ function om_save_order($ordine, $prodotti) {
   return FALSE;
 }
 
-function om_get_products_data() {
+function om_get_products_data($order_by='tipologia, nome') {
   global $wpdb;
   $product_table = $wpdb->prefix . 'om_prodotto';
   return $wpdb->get_results("
     SELECT *
     FROM $product_table
-    ORDER BY tipologia, nome
+    ORDER BY $order_by
   ");
+}
+
+function om_update_products($to_update) {
+  global $wpdb;
+  $product_table = $wpdb->prefix . 'om_prodotto';
+  $updated = 0;
+  foreach ($to_update as $row) {
+    $id = (int) $row['id'];
+    unset($row['id']);
+    if (!$row['id_pagina']) {
+      unset($row['id_pagina']);
+    }
+    $updated += $wpdb->update($product_table, $row, array('id' => $id), array(
+      'nome' => '%s',
+      'tipologia' => '%s',
+      'unita_misura' => '%s',
+      'unita_misura_plurale' => '%s',
+      'provenienza' => '%s',
+      'id_pagina' => '%d',
+    ), '%d');
+  }
+  return $updated === count($to_update);
+}
+function om_insert_products($to_insert) {
+  global $wpdb;
+  $product_table = $wpdb->prefix . 'om_prodotto';
+  $inserted = 0;
+  foreach ($to_insert as $row) {
+    if (!$row['id_pagina']) {
+      unset($row['id_pagina']);
+    }
+    $inserted += $wpdb->insert($product_table, $row, array(
+      'nome' => '%s',
+      'tipologia' => '%s',
+      'unita_misura' => '%s',
+      'unita_misura_plurale' => '%s',
+      'provenienza' => '%s',
+      'id_pagina' => '%d',
+    ));
+  }
+  return $inserted === count($to_insert);
+}
+function om_delete_products($to_delete) {
+  global $wpdb;
+  $product_table = $wpdb->prefix . 'om_prodotto';
+  $deleted = 0;
+  foreach ($to_delete as $row) {
+    $deleted += $wpdb->delete($product_table, $row, '%d');
+  }
+$wpdb->print_error();
+  return $deleted === count($to_delete);
 }
 
 function om_get_order_products($order_id) {
@@ -139,6 +196,7 @@ function om_get_order_products($order_id) {
              p.nome,
              p.tipologia,
              p.unita_misura,
+             p.unita_misura_plurale,
              p.provenienza,
              p.pagina,
              op.prezzo
@@ -151,15 +209,32 @@ function om_get_order_products($order_id) {
 }
 
 function om_set_options() {
-  add_option('om_main_form_page', 'om_main_form');
-  add_option('om_main_form_page_id', 0);
-  add_option('om_main_form_splash_page', '');
-  add_option('om_product_typologies', '');
+  if (!get_option('om_main_form_page_id')) {
+    global $user_ID;
+    $page = array(
+      'post_type' => 'page',
+      'post_name' => 'om_main_form',
+      'post_title' => "Modulo d'Ordine",
+      'post_status' => 'publish',
+      'post_content' => '',
+      'post_parent' => 0,
+      'post_author' => $user_ID,
+      'comment_status' => 'closed',
+    );
+    $page_id = wp_insert_post($page);
+    add_option('om_main_form_page_id', $page_id);
+
+    add_option('om_main_form_page', 'om_main_form');
+  //  add_option('om_main_form_splash_page', '');
+  //  add_option('om_product_typologies', '');
+  //  add_option('om_product_units', '');
+  }
 }
 function om_reset_options() {
-  delete_option('om_main_form_page');
   delete_option('om_main_form_page_id');
-  delete_option('om_main_form_splash_page');
-  delete_option('om_product_typologies');
+  //delete_option('om_main_form_page');
+  //delete_option('om_main_form_splash_page');
+  //delete_option('om_product_typologies', '');
+  //delete_option('om_product_units');
 }
 ?>

@@ -24,9 +24,12 @@
 
           <fieldset class="om-form-row">
             <input type="hidden" name="prodotti[<?php echo $i; ?>][id]" value="<?php echo $product['id']; ?>" />
-            <input type="checkbox" name="prodotti[<?php echo $i; ?>][attivo]" value="1" <?php if ($product['attivo']) { echo 'checked'; } ?> />
-            <label for="om_form_price_<?php echo $i; ?>" class="om-product-name"><?php echo $product['nome']; ?></label>
-            <input type="text" id="om_form_price_<?php echo $i; ?>" name="prodotti[<?php echo $i; ?>][prezzo]" <?php if($error) { ?>class="om-error"<?php } ?> value="<?php echo $product['prezzo']; ?>" />
+            <input type="checkbox" id="om_form_chk_<?php echo $i; ?>" name="prodotti[<?php echo $i; ?>][attivo]" value="1" <?php if ($product['attivo']) { echo 'checked'; } ?> />
+            <label for="om_form_chk_<?php echo $i; ?>" class="om-product-name small"><?php echo $product['nome']; ?></label>
+            <input type="hidden" name="prodotti[<?php echo $i; ?>][nome]" value="<?php echo $product['nome']; ?>">
+            <input type="text" id="om_form_price_<?php echo $i; ?>" name="prodotti[<?php echo $i; ?>][prezzo]" class="smaller<?php if($error) { ?> om-error<?php } ?>" value="<?php echo $product['prezzo']; ?>" />
+            <input type="hidden" name="prodotti[<?php echo $i; ?>][unita_misura]" value="<?php echo $product['unita_misura']; ?>">
+            &euro;/<?php echo $product['unita_misura']; ?>
             <span class="om-error-message"><?php echo $error; ?></span>
           </fieldset>
 
