@@ -3,10 +3,11 @@ function om_install() {
   global $wpdb;
   $prefix = $wpdb->prefix . 'om_';
   $order_table = $prefix . 'ordine';
-  $order_row_table = $prefix . 'riga_ordine';
   $order_product_table = $prefix . 'prodotto_ordine';
+  $order_client_table = $prefix . 'ordine_cliente';
+  $order_row_table = $prefix . 'riga_ordine';
   $product_table = $prefix . 'prodotto';
-  $client_table = $prefix . 'contatto';
+  $gas_table = $prefix . 'gas';
 
   $charset_collate = $wpdb->get_charset_collate();
 
@@ -19,26 +20,39 @@ function om_install() {
     dt_accesso datetime,
     PRIMARY KEY  (id)
   ) $charset_collate;";
-
-  // Create order row table
-  $order_row_sql = "CREATE TABLE $order_row_table (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    id_ordine int(11) NOT NULL,
-    cliente varchar(255) NOT NULL,
-    id_prodotto_ordine int(11) NOT NULL,
-    quantita decimal(11,3) NOT NULL,
-    id_contatto int(11) NOT NULL,
-    dt_modifica datetime,
-    dt_accesso datetime
-    PRIMARY KEY  (id)
-  ) $charset_collate;";
   
   // Create order product table
   $order_product_sql = "CREATE TABLE $order_product_table (
     id int(11) NOT NULL AUTO_INCREMENT,
     id_ordine int(11) NOT NULL,
     id_prodotto int(11) NOT NULL,
-    prezzo decimal(5,2) NOT NULL
+    prezzo decimal(11,3) NOT NULL,
+    PRIMARY KEY  (id)
+  ) $charset_collate;";
+
+  // Create client order table
+  $order_client_sql = "CREATE TABLE $order_client_table (
+    id int(11) NOT NULL AUTO_INCREMENT,
+    id_ordine int(11) NOT NULL,
+    username varchar(60) NOT NULL,
+    progressivo int(3) NOT NULL,
+    nome varchar(255) NOT NULL,
+    id_gas int(11),
+    area varchar(255) NOT NULL,
+    indirizzo text NOT NULL,
+    telefono varchar(30),
+    note text,
+    dt_modifica datetime,
+    dt_accesso datetime,
+    PRIMARY KEY  (id)
+  ) $charset_collate;";
+
+  // Create order row table
+  $order_row_sql = "CREATE TABLE $order_row_table (
+    id int(11) NOT NULL AUTO_INCREMENT,
+    id_ordine_cliente int(11) NOT NULL,
+    id_prodotto_ordine int(11) NOT NULL,
+    quantita decimal(11,3) NOT NULL,
     PRIMARY KEY  (id)
   ) $charset_collate;";
 
@@ -51,32 +65,31 @@ function om_install() {
     unita_misura_plurale varchar(20) NOT NULL,
     provenienza text,
     pagina varchar(255),
-    prezzo decimal(5,2),
-    attivo bit
+    prezzo decimal(11,3),
+    attivo bit,
     PRIMARY KEY  (id)
   ) $charset_collate;";
 
   // Create client contact table
-  $client_sql = "CREATE TABLE $client_table (
+  $gas_sql = "CREATE TABLE $gas_table (
     id int(11) NOT NULL AUTO_INCREMENT,
     nome varchar(255) NOT NULL,
     nome_contatto varchar(255),
     area varchar(255) NOT NULL,
     indirizzo text NOT NULL,
-    telefono varchar(30)
+    telefono varchar(30),
     PRIMARY KEY  (id)
   ) $charset_collate;";
   
   require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
   dbDelta(array(
     $order_sql,
-    $order_row_sql,
     $order_product_sql,
+    $order_client_sql,
+    $order_row_sql,
     $product_sql,
-    $client_sql,
+    $gas_sql,
   ));
-
-  // TODO : Install main form
 }
 
 function om_has_active_order() {
@@ -123,6 +136,49 @@ function om_save_order($ordine, $prodotti) {
     return $inserted;
   }
   return FALSE;
+}
+
+function om_get_gas_list($order_by='nome') {
+  global $wpdb;
+  $gas_table = $wpdb->prefix . 'om_gas';
+  return $wpdb->get_results("
+    SELECT id, nome, area, nome_contatto
+    FROM $gas_table
+    ORDER BY $order_by
+  ");
+}
+
+function om_get_gas_data($order_by='nome') {
+  global $wpdb;
+  $gas_table = $wpdb->prefix . 'om_gas';
+  return $wpdb->get_results("
+    SELECT *
+    FROM $gas_table
+    ORDER BY $order_by
+  ");
+}
+
+function om_delete_gas($id) {
+  global $wpdb;
+  $gas_table = $wpdb->prefix . 'om_gas';
+  $deleted = $wpdb->delete($gas_table, array('id' => $id), '%d');
+  return $deleted === 1;
+}
+
+function om_insert_gas($gas) {
+  global $wpdb;
+  $gas_table = $wpdb->prefix . 'om_gas';
+  if ($wpdb->insert($gas_table, $gas, '%s')) {
+    return $wpdb->insert_id;
+  }
+}
+
+function om_update_gas($gas) {
+  global $wpdb;
+  $gas_table = $wpdb->prefix . 'om_gas';
+  $id = (int) $gas['id'];
+  unset($gas['id']);
+  return $wpdb->update($gas_table, $gas, array('id' => $id), '%s');
 }
 
 function om_get_products_data($order_by='tipologia, nome') {
@@ -225,13 +281,13 @@ function om_set_options() {
     add_option('om_main_form_page_id', $page_id);
 
     add_option('om_main_form_page', 'om_main_form');
-  //  add_option('om_main_form_splash_page', '');
-  //  add_option('om_product_typologies', '');
-  //  add_option('om_product_units', '');
+    add_option('om_main_form_splash', '');
+    add_option('om_product_typologies', '');
+    add_option('om_product_units', '');
   }
 }
 function om_reset_options() {
-  delete_option('om_main_form_page_id');
+  //delete_option('om_main_form_page_id');
   //delete_option('om_main_form_page');
   //delete_option('om_main_form_splash_page');
   //delete_option('om_product_typologies', '');

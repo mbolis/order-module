@@ -12,8 +12,8 @@
             <li class="om-order-select postbox">
               <h3>Ordine corrente</h3>
               <div class="inside">
-                <span class="om-date-info"><strong>Data apertura:</strong> <?php echo date('d/m/Y', strtotime($current_order->dt_apertura)); ?></span><br>
-                <span class="om-date-info"><strong>Data chiusura:</strong> <?php echo date('d/m/Y', strtotime($current_order->dt_chiusura)); ?></span>
+                <span class="om-date-info"><strong>Data apertura:</strong> <?php echo date('d/m/Y H:i', strtotime($current_order->dt_apertura)); ?></span><br>
+                <span class="om-date-info"><strong>Data chiusura:</strong> <?php echo date('d/m/Y H:i', strtotime($current_order->dt_chiusura)); ?></span>
               </div>
             </li>
         <?php } else { ?>
@@ -26,8 +26,8 @@
             <li class="om-order-select postbox">
               <h3>Ultimo ordine</h3>
               <div class="inside">
-                <span class="om-date-info"><strong>Data apertura:</strong> <?php echo date('d/m/Y', strtotime($last_order->dt_apertura)); ?></span><br>
-                <span class="om-date-info"><strong>Data chiusura:</strong> <?php echo date('d/m/Y', strtotime($last_order->dt_chiusura)); ?></span>
+                <span class="om-date-info"><strong>Data apertura:</strong> <?php echo date('d/m/Y H:i', strtotime($last_order->dt_apertura)); ?></span><br>
+                <span class="om-date-info"><strong>Data chiusura:</strong> <?php echo date('d/m/Y H:i:', strtotime($last_order->dt_chiusura)); ?></span>
               </div>
             </li>
         <?php } ?>

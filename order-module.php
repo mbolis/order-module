@@ -23,6 +23,7 @@ function om_show_menu_entries() {
   }
   add_submenu_page('om-orders', 'Opzioni Ordini', 'Opzioni', 'manage_options', 'om-options', 'om_options');
   add_submenu_page('om-orders', 'Elenco Prodotti', 'Prodotti', 'manage_options', 'om-products', 'om_products');
+  add_submenu_page('om-orders', 'Elenco GAS', 'GAS', 'manage_options', 'om-gas', 'om_gas');
 }
 function om_orders() {
   if (!current_user_can('manage_options'))  {
@@ -41,10 +42,16 @@ function om_orders() {
 
   include 'ordmod_manage.php';
 }
+
+function om_x_page_id($page) {
+  return $page->ID;
+}
 function om_options() {
   if (!current_user_can('manage_options'))  {
     wp_die(__('You do not have sufficient permissions to access this page.'));
   }
+
+  $all_pages = get_pages(array('exclude' => get_option('om_main_form_page_id')));
 
   $errors = array();
   if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_POST['submit']) {
@@ -55,10 +62,16 @@ function om_options() {
       $errors['main_form_page'] = 'Il nome specificato &egrave; gi&agrave; in uso da un\'altra pagina.';
     }
 
+    $main_form_splash = trim($_POST['main_form_splash']);
+    if (!$main_form_splash || !in_array($main_form_splash, array_map('om_x_page_id', $all_pages))) {
+      $errors['main_form_splash'] = 'Selezionare un valore dalla lista.';
+    }
+
     $product_typologies = preg_split('/\\s*,\\s*/', trim($_POST['product_typologies']));
     if (!$product_typologies) {
       $errors['product_typologies'] = 'Occorre specificare almeno una tipologia.';
     }
+    $product_typologies = implode(', ', $product_typologies);
 
     $product_units = preg_split('/\\s*,\\s*/', trim($_POST['product_units']));
     if (!$product_units) {
@@ -77,6 +90,7 @@ function om_options() {
       }
       $product_units[$i] = $unit;
     }
+    $product_units = implode(', ', $product_units);
 
     if (!$errors) {
       update_option('om_main_form_page', $main_form_page);
@@ -84,15 +98,15 @@ function om_options() {
         'ID' => get_option('om_main_form_page_id'),
         'post_name' => $main_form_page,
       ));
-      $product_typologies = implode(', ', $product_typologies);
+      update_option('om_main_form_splash', $main_form_splash);
       update_option('om_product_typologies', $product_typologies);
-      $product_units = implode(', ', $product_units);
       update_option('om_product_units', $product_units);
       $success = TRUE;
     }
 
   } else {
     $main_form_page = get_option('om_main_form_page');
+    $main_form_splash = get_option('om_main_form_splash');
     $product_typologies = get_option('om_product_typologies');
     $product_units = get_option('om_product_units');
   }
@@ -142,6 +156,66 @@ function om_products() {
   ));
   include 'products_form.php';
 }
+function om_gas() {
+  if (!current_user_can('manage_options'))  {
+    wp_die(__('You do not have sufficient permissions to access this page.'));
+  }
+
+  if (strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_POST['submit']) {
+  } else {
+    $gas_data = om_get_gas_data();
+  }
+
+  include 'gas_form.php';
+}
+if (is_admin()) {
+  add_action('wp_ajax_om_delete_gas', 'om_json_delete_gas');
+  function om_json_delete_gas() {
+    if (!current_user_can('manage_options'))  {
+      header('HTTP/1.1 403 Forbidden');
+      die();
+    }
+
+    $id = $_POST['id'];
+    if (!$id) {
+      header('HTTP/1.1 400 Bad Request');
+      die();
+    }
+
+    if (!om_delete_gas($id)) {
+      header('HTTP/1.1 500 Internal Server Error');
+    } else {
+      header('HTTP/1.1 204 No Content');
+    }
+    die();
+  }
+  add_action('wp_ajax_om_save_gas', 'om_json_save_gas');
+  function om_json_save_gas() {
+    if (!current_user_can('manage_options'))  {
+      header('HTTP/1.1 403 Forbidden');
+      die();
+    }
+
+    $gas = $_POST['gas'];
+    $id = $gas['id'];
+    if ($id) {
+      if (!om_update_gas($gas)) {
+        header('HTTP/1.1 500 Internal Server Error');
+        die();
+      }
+    } else {
+      $id = om_insert_gas($gas);
+      if (!$id) {
+        header('HTTP/1.1 500 Internal Server Error');
+        die();
+      }
+    }
+
+    echo $id;
+    die();
+  }
+}
+
 function om_new_order() {
   if (!current_user_can('manage_options'))  {
     wp_die(__('You do not have sufficient permissions to access this page.'));
@@ -218,30 +292,33 @@ function om_new_order() {
   include 'ordmod_new_order.php';
 }
 
-//if (current_user_can('read')) {
+if (is_admin()) {
   add_action('wp_ajax_order_form_submit', 'om_json_order_form_submit');
-  add_action('wp_ajax_nopriv_order_form_submit', 'om_json_order_form_submit');
+  //add_action('wp_ajax_nopriv_order_form_submit', 'om_json_order_form_submit');
   function om_json_order_form_submit() {
-    header('Content-Type: application/json');
-    $order = om_get_top_orders(1)[0];
-    if ($order) {
-      $now = time();
-      $dt_apertura = strtotime($order->dt_apertura . 'Europe/Rome');
-      $dt_chiusura = strtotime($order->dt_chiusura . 'Europe/Rome');
-      if ($dt_apertura <= $now && $now <= $dt_chiusura) {
-        $products = om_get_order_products($order->id);
-        $result = array(
-          'dt_chiusura' => $dt_chiusura,
-          'prodotti' => $products
-        );
-        echo json_encode($result);
-        wp_die();
-      }
+    if (current_user_can('read'))  {
+      echo '<pre>' . print_r($_POST, TRUE) . '</pre>';
     }
-    echo 'false';
+//    header('Content-Type: application/json');
+//    $order = om_get_top_orders(1)[0];
+//    if ($order) {
+//      $now = time();
+//      $dt_apertura = strtotime($order->dt_apertura . 'Europe/Rome');
+//      $dt_chiusura = strtotime($order->dt_chiusura . 'Europe/Rome');
+//      if ($dt_apertura <= $now && $now <= $dt_chiusura) {
+//        $products = om_get_order_products($order->id);
+//        $result = array(
+//          'dt_chiusura' => $dt_chiusura,
+//          'prodotti' => $products
+//        );
+//        echo json_encode($result);
+//        wp_die();
+//      }
+//    }
+//    echo 'false';
     wp_die();
   }
-//}
+}
 add_action('the_content', 'om_order_form_data');
 function om_order_form_data($content) {
   global $post;
@@ -260,12 +337,16 @@ function om_order_form_data($content) {
       return 'Ordine scaduto'; // TODO
     }
 
+    $user = wp_get_current_user();
+
     $content = file_get_contents('_ordmod_main_form.html', TRUE);
 
-    $splash_page = get_page_by_path(get_option('om_main_form_splash_page'));
+    $splash_page = get_post(get_option('om_main_form_splash'));
     if ($splash_page) {
-      $content .= '<script type="text/html" id="splash">' . $splash_page->post_content . '</script>';
+      $content .= '<script type="text/html" id="splash">' . wpautop($splash_page->post_content) . '</script>';
     }
+
+    $gas_list = om_get_gas_list();
 
     $tipologie = preg_split('/\\s*,\\s*/', trim(get_option('om_product_typologies')));
     $products_hash = array();
@@ -283,7 +364,12 @@ function om_order_form_data($content) {
     
     $content .= '
       <script>
-        jQuery(function() { loadProducts(' . json_encode($products_data) . ') });
+        ajaxurl = "' . admin_url('admin-ajax.php') . '";
+        //username("' . $user->user_login . '");
+        jQuery(function() {
+          loadGasList(' . json_encode($gas_list) . ');
+          loadProducts(' . json_encode($products_data) . ');
+        });
       </script>';
   }
   return $content;

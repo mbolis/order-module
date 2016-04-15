@@ -9,7 +9,24 @@
   </div>
 </div>
 <script type="text/html" id="contactInformation">
-  GAS?? CONTATTO??
+  <h2>Appartieni a un GAS?</h2>
+  <p>
+    <input type="radio" id="gas_yes" data-bind="checked: isGasMember, checkedValue: true"> <label for="gas_yes">S&Igrave;</label> <!--TODO: data-bind-->
+    <input type="radio" id="gas_no" data-bind="checked: isGasMember, checkedValue: false"> <label for="gas_no">NO</label>
+    <div data-bind="if: isGasMember">
+      <h3>Seleziona quale:</h3>
+      <select data-bind="value: id_gas, options: gasList, optionsValue: 'id', optionsText: 'nome', optionsCaption: ''"></select>
+      <div data-bind="if:id_gas">
+        <!--ko with: gas-->
+          <strong>GAS:</strong> <!--ko text: nome--><br>
+          <strong>Zona:</strong> <!--ko text: area--><br>
+          <strong>Nominativo referente:</strong> <!--ko text: nome_contatto-->
+        <!--/ko-->
+      </div>
+    </div>
+    <div data-bind="ifnot: isGasMember">
+    </div>
+  </p>
 </script>
 <script type="text/html" id="products">
   <h2 data-bind="text: title"></h2>
@@ -17,7 +34,7 @@
     <tbody data-bind="foreach: products">
       <tr>
         <td data-bind="text: nome"></td>
-        <td><span data-bind="text: prezzo"></span> &euro;/<span data-bind="text: unita_misura"></span></td>
+        <td><!--ko text: prezzo--><!--/ko--> &euro;/<!--ko text: unita_misura--><!--/ko--></td>
         <td><input type="text" class="small" data-bind="textInput: qty"><!--ko text: unita_misura_plurale--><!--/ko--></td>
         <td data-bind="html: finalPrice"></td>
       <tr>
@@ -33,9 +50,36 @@
       </tr>
     </tbody>
   </table>
+  <p>
+    <em>Note:</em><br>
+    <textarea data-bind="textInput: $root.notes"></textarea>
+  </p>
 </script>
 <script type="text/html" id="summary">
-  <form id="om_order_form">
-    RIEPILOGO
+  <form id="om_order_form" method="POST">
+    <input type="hidden" name="action" value="order_form_submit">
+    <table data-bind="foreach: typologies">
+      <thead>
+        <tr>
+          <th colspan="4" data-bind="text: title"></th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: products">
+        <tr>
+          <td>
+            <!--ko text: nome--><!--/ko-->
+          </td>
+          <td><!--ko text: prezzo--><!--/ko--> &euro;/<!--ko text: unita_misura--><!--/ko--></td>
+          <td>
+            <span data-bind="if: qtyFloat">
+              <!--ko text: qty--><!--/ko--> <!--ko text: unita_misura_plurale--><!--/ko-->
+              <input type="hidden" data-bind="attr: { name: 'products['+$parentContext.$index()+']['+$index()+'][id]' }, value: id">
+              <input type="hidden" data-bind="attr: { name: 'products['+$parentContext.$index()+']['+$index()+'][qta]' }, value: qtyFloat">
+            </span>
+          </td>
+          <td data-bind="html: finalPrice"></td>
+        </tr>
+      <tbody>
+    </table>
   </form>
 </script>

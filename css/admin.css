@@ -125,3 +125,34 @@ label.om-delete-product, label.om-add-product, label.om-undelete-product {
   opacity : 0.5;
   cursor : pointer;
 }
+.om-gas-list {
+  background-color : white;
+  border : 1px solid #e5e5e5;
+  border-radius : 0.5em;
+  box-shadow : 0 1px 1px rgba(0, 0, 0, 0.04);
+  margin-right : 1em;
+  padding : 1em;
+}
+.om-gas-list ul {
+  border : 1px solid #e5e5e5;
+  box-shadow : inset 0 1px 1px rgba(0, 0, 0, 0.04);
+  min-height : 20em;
+  overflow : auto;
+}
+.om-gas-list li {
+  padding : 0.5em;
+  margin : 0;
+  border-bottom : 1px solid #eee;
+}
+.om-gas-list li:hover {
+  background-color : gainsboro;
+  cursor : pointer;
+}
+.om-gas-card {
+  background-color : white;
+  border: 1px solid #e5e5e5;
+  border-radius : 0.5em;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  padding : 1em;
+  display : inline-block;
+}
