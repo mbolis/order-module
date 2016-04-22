@@ -9,22 +9,31 @@
   </div>
 </div>
 <script type="text/html" id="contactInformation">
-  <h2>Appartieni a un GAS?</h2>
-  <p>
+  <label for="contatto_nome"><strong>Nome:&nbsp;</strong></label>
+  <input type="text" id="contatto_nome" data-bind="textInput: cliente.nome">
+  <h3>Appartieni a un GAS?<!--/h3-->
     <input type="radio" id="gas_yes" data-bind="checked: isGasMember, checkedValue: true"> <label for="gas_yes">S&Igrave;</label> <!--TODO: data-bind-->
     <input type="radio" id="gas_no" data-bind="checked: isGasMember, checkedValue: false"> <label for="gas_no">NO</label>
+  </h3>
+  <p>
     <div data-bind="if: isGasMember">
-      <h3>Seleziona quale:</h3>
-      <select data-bind="value: id_gas, options: gasList, optionsValue: 'id', optionsText: 'nome', optionsCaption: ''"></select>
+      <label for="gas_id"><strong>Quale?&nbsp;</strong></label>
+      <select id="gas_id" data-bind="value: id_gas, options: gasList, optionsValue: 'id', optionsText: 'nome', optionsCaption: ''"></select>
       <div data-bind="if:id_gas">
         <!--ko with: gas-->
-          <strong>GAS:</strong> <!--ko text: nome--><br>
-          <strong>Zona:</strong> <!--ko text: area--><br>
-          <strong>Nominativo referente:</strong> <!--ko text: nome_contatto-->
+          <strong>Zona:</strong> <!--ko text: area--><!--/ko--><br>
+          <strong>Referente:</strong> <!--ko text: nome_contatto--><!--/ko-->
         <!--/ko-->
       </div>
     </div>
-    <div data-bind="ifnot: isGasMember">
+    <div data-bind="if: isGasMember() === false">
+      <!--ko with: cliente-->
+        <label for="contatto_indirizzo"><strong>Indirizzo:</strong></label><br>
+        <textarea id="contatto_indirizzo" data-bind="textInput: indirizzo"></textarea>
+        <label for="contatto_telefono"><strong>Telefono:</strong></label>
+        <input type="text" id="contatto_telefono" data-bind="textInput: telefono">
+        <span id="contatto_telefono_error" class="errore" data-bind="visible: !telefonoIsValid()">Il numero di telefono pu&ograve; contenere solo numeri, spazi e trattini</span>
+      <!--/ko-->
     </div>
   </p>
 </script>
@@ -34,7 +43,7 @@
     <tbody data-bind="foreach: products">
       <tr>
         <td data-bind="text: nome"></td>
-        <td><!--ko text: prezzo--><!--/ko--> &euro;/<!--ko text: unita_misura--><!--/ko--></td>
+        <td><!--ko text: prezzoDisplay--><!--/ko--> &euro;/<!--ko text: unita_misura--><!--/ko--></td>
         <td><input type="text" class="small" data-bind="textInput: qty"><!--ko text: unita_misura_plurale--><!--/ko--></td>
         <td data-bind="html: finalPrice"></td>
       <tr>
@@ -56,20 +65,26 @@
   </p>
 </script>
 <script type="text/html" id="summary">
-  <form id="om_order_form" method="POST">
+  <form id="om_order_form" method="POST" data-bind="attr: { action : $root.ajaxurl }">
     <input type="hidden" name="action" value="order_form_submit">
-    <table data-bind="foreach: typologies">
+    <table>
       <thead>
+        <tr>
+          <th colspan="2"></th>
+          <th>Q.t&agrave;</th>
+          <th>Prezzo</th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: typologies">
         <tr>
           <th colspan="4" data-bind="text: title"></th>
         </tr>
-      </thead>
-      <tbody data-bind="foreach: products">
+        <!--ko foreach: products-->
         <tr>
           <td>
             <!--ko text: nome--><!--/ko-->
           </td>
-          <td><!--ko text: prezzo--><!--/ko--> &euro;/<!--ko text: unita_misura--><!--/ko--></td>
+          <td><!--ko text: prezzoDisplay--><!--/ko--> &euro;/<!--ko text: unita_misura--><!--/ko--></td>
           <td>
             <span data-bind="if: qtyFloat">
               <!--ko text: qty--><!--/ko--> <!--ko text: unita_misura_plurale--><!--/ko-->
@@ -79,7 +94,26 @@
           </td>
           <td data-bind="html: finalPrice"></td>
         </tr>
+        <!--/ko-->
       <tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3" style="text-align:right">Totale &nbsp;</th>
+          <td data-bind="html: totalPrice"></td>
+        </tr>
+      </tfoot>
     </table>
+    <p>
+      <em>Note:</em><br>
+      <textarea name="note" data-bind="textInput: $root.notes"></textarea>
+    </p>
+    <p data-bind="with: contacts">
+      <!--ko if: gas-->
+        <!--ko with: gas-->
+          <h3>GAS</h3>
+          <strong>Nome: </strong><!--ko text: nome--><!--/ko-->
+        <!--/ko-->
+      <!--/ko-->
+    </p>
   </form>
 </script>

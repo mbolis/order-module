@@ -3,8 +3,19 @@ function Page(template) {
 }
 Page.prototype.valid = true;
 
+var RE_TELEFONO = /^[-+0-9 \t()]+$/;
+
 function ContactPage(gasList) {
   Page.call(this, 'contactInformation');
+  this.cliente = {
+    nome : ko.observable(''),
+    indirizzo : ko.observable(''),
+    telefono : ko.observable('')
+  };
+  this.cliente.telefonoIsValid = ko.computed(function() {
+    var telefono = this.telefono().trim();
+    return !telefono || RE_TELEFONO.test(telefono);
+  }, this.cliente);
   this.isGasMember = ko.observable();
   this.gasList = ko.observableArray(gasList);
   this.id_gas = ko.observable();
@@ -19,10 +30,13 @@ function ContactPage(gasList) {
     }
   }, this);
   this.valid = ko.computed(function() {
+    if (!this.cliente.nome().trim()) {
+      return false;
+    }
     if (this.isGasMember()) {
       return !!this.id_gas();
     } else {
-      return false; // TODO
+      return this.cliente.indirizzo().trim() && this.cliente.telefono() && this.cliente.telefonoIsValid();
     }
   }, this);
 }
@@ -63,6 +77,9 @@ function Product(p) {
   for (var k in p) {
     this[k] = p[k];
   }
+  this.prezzoDisplay = ko.computed(function() {
+    return Number(this.prezzo).toFixed(2).replace(/\./, ',');
+  }, this);
   this.qty = ko.observable('');
   this.valid = ko.computed(function() {
     return RE_QTY.test(this.qty().trim());
@@ -85,6 +102,21 @@ function SummaryPage(pages) {
   this.typologies = ko.computed(function() {
     var ps = pages.slice(2);
     return ps.slice(0, ps.length - 1);
+  });
+  this.contacts = ko.computed(function() {
+    console.log(pages()[1])
+    return pages()[1];
+  });
+  this.totalPrice = ko.computed(function() {
+    var totalPrice = 0;
+    var typologies = this.typologies();
+    for (var t in typologies) {
+      var products = typologies[t].products;
+      for (var p in products) {
+        totalPrice += products[p].finalPriceFloat();
+      }
+    }
+    return totalPrice.toFixed(2) + '&euro;';
   }, this);
 }
 SummaryPage.prototype.valid = true;
@@ -179,6 +211,7 @@ function ViewModel() {
     route();
   }
 }
+ViewModel.prototype.ajaxurl = ajaxurl;
 var viewModel = new ViewModel;
 viewModel.route();
 ko.applyBindings(viewModel);

@@ -120,11 +120,30 @@ function om_save_order($ordine, $prodotti) {
   if ($wpdb->insert($order_table, $ordine, '%s')) {
     $id_ordine = $wpdb->insert_id;
 
-    $product_table = $wpdb->prefix . 'om_prodotto_ordine';
+    $product_table = $wpdb->prefix . 'om_prodotto';
+    $wpdb->query("UPDATE $product_table SET attivo=0");
+
+    $product_order_table = $wpdb->prefix . 'om_prodotto_ordine';
     $inserted = 0;
     foreach ($prodotti as $prodotto) {
-      $inserted += $wpdb->insert(
+      // update prodotti with new default values
+      $wpdb->update(
         $product_table,
+        array(
+          'prezzo' => $prodotto['prezzo'],
+          'attivo' => 1
+        ),
+        array('id_prodotto' => $prodotto['id']),
+        array(
+          '%f',
+          '%d'
+        ),
+        array('%d')
+      );
+
+      // insert actual order products
+      $inserted += $wpdb->insert(
+        $product_order_table,
         array(
           'id_ordine' => $id_ordine,
           'id_prodotto' => $prodotto['id'],
