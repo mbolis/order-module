@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Europe/Rome');
+
 function om_install() {
   global $wpdb;
   $prefix = $wpdb->prefix . 'om_';
@@ -35,11 +37,10 @@ function om_install() {
     id int(11) NOT NULL AUTO_INCREMENT,
     id_ordine int(11) NOT NULL,
     username varchar(60) NOT NULL,
-    progressivo int(3) NOT NULL,
     nome varchar(255) NOT NULL,
     id_gas int(11),
-    area varchar(255) NOT NULL,
-    indirizzo text NOT NULL,
+    area varchar(255),
+    indirizzo text,
     telefono varchar(30),
     note text,
     dt_modifica datetime,
@@ -133,7 +134,7 @@ function om_save_order($ordine, $prodotti) {
           'prezzo' => $prodotto['prezzo'],
           'attivo' => 1
         ),
-        array('id_prodotto' => $prodotto['id']),
+        array('id' => $prodotto['id']),
         array(
           '%f',
           '%d'
@@ -155,6 +156,144 @@ function om_save_order($ordine, $prodotti) {
     return $inserted;
   }
   return FALSE;
+}
+
+function om_get_client_order_full($client_order_id) {
+  global $wpdb;
+
+  $client_order_table = $wpdb->prefix . 'om_ordine_cliente';
+  $order_table = $wpdb->prefix . 'om_ordine';
+  $gas_table = $wpdb->prefix . 'om_gas';
+
+  $client_order = $wpdb->get_row(
+    $wpdb->prepare("
+      SELECT
+        cli.nome AS nome_cliente,
+        usr.user_email AS email_cliente,
+        gas.id AS id_gas,
+        gas.nome AS nome_gas,
+        gas.nome_contatto AS nome_contatto_gas,
+        COALESCE(gas.area, cli.area) AS area,
+        COALESCE(gas.indirizzo, cli.indirizzo) AS indirizzo,
+        COALESCE(gas.telefono, cli.telefono) AS telefono,
+        cli.id_ordine,
+        cli.note,
+        ord.dt_apertura,
+        ord.dt_chiusura
+      FROM $client_order_table cli
+      INNER JOIN $wpdb->users usr ON (usr.user_login=cli.username)
+      INNER JOIN $order_table ord ON (ord.id=cli.id_ordine)
+      LEFT OUTER JOIN $gas_table gas ON (gas.id=cli.id_gas)
+      WHERE cli.id = %d ",
+      $client_order_id
+    ),
+    ARRAY_A
+  );
+
+  $products = $wpdb->get_results(
+    $wpdb->prepare("
+      SELECT
+        p.tipologia,
+        UPPER(p.nome) AS nome,
+        p.provenienza,
+        po.prezzo,
+        p.unita_misura,
+        ro.quantita
+      FROM wp_om_prodotto_ordine po
+      INNER JOIN wp_om_prodotto p ON (p.id=po.id_prodotto)
+      LEFT OUTER JOIN wp_om_riga_ordine ro ON (ro.id_prodotto_ordine=p.id)
+      WHERE po.id_ordine = %d
+      AND (ro.id_ordine_cliente IS NULL OR ro.id_ordine_cliente = %d )
+      ORDER BY nome",
+      $client_order['id_ordine'],
+      $client_order_id
+    ),
+    ARRAY_A
+  );
+
+  return array(
+    'client_order' => $client_order,
+    'products' => $products,
+  );
+}
+
+function om_save_client_order($data) {
+  global $wpdb;
+
+  $order_table = $wpdb->prefix . 'om_ordine';
+  $order_id = $wpdb->get_var("
+    SELECT id
+    FROM $order_table
+    WHERE dt_chiusura>NOW()
+  ");
+  if (!$order_id) {
+    return -1;
+  }
+
+  $client_order = $data['client'];
+  $insert_data = array(
+    'username'    => $client_order['username'],
+    'nome'        => $client_order['nome'],
+    'note'        => $client_order['note'],
+    'id_ordine'   => $order_id,
+    'dt_modifica' => date('Y-m-d H:i:s'),
+  );
+  $insert_format = array('%s', '%s', '%s', '%d');
+  if ($client_order['id_gas']) {
+    $insert_data['id_gas'] = $client_order['id_gas'];
+    $insert_format[] = '%d';
+  } else {
+    $insert_data['area'] = $client_order['area'];
+    $insert_format[] = '%s';
+    $insert_data['indirizzo'] = $client_order['indirizzo'];
+    $insert_format[] = '%s';
+    $insert_data['telefono'] = $client_order['telefono'];
+    $insert_format[] = '%s';
+  }
+
+  $client_order_table = $wpdb->prefix . 'om_ordine_cliente';
+  $insert_ok = $wpdb->insert(
+    $client_order_table,
+    $insert_data,
+    $insert_format
+  );
+  if (!$insert_ok) {
+    return -2;
+  }
+
+  $client_order_id = $wpdb->insert_id;
+  $order_row_table = $wpdb->prefix . 'om_riga_ordine';
+  foreach ($data['products'] as $x => $row) {
+    $row_insert_ok = $wpdb->insert(
+      $order_row_table,
+      array(
+        'id_ordine_cliente'  => $client_order_id,
+        'id_prodotto_ordine' => $row['id_prodotto_ordine'],
+        'quantita'           => $row['quantita'],
+      ),
+      array(
+        'id_ordine_cliente'  => '%d',
+        'id_prodotto_ordine' => '%d',
+        'quantita'           => '%f',
+      )
+    );
+
+    if (!$row_insert_ok) {
+      $wpdb->delete(
+        $order_row_table,
+        array('id_ordine_cliente' => $client_order_id),
+        '%d'
+      );
+      $wpdb->delete(
+        $client_order_table,
+        array('id' => $client_order_id),
+        '%d'
+      );
+      return -2;
+    }
+  }
+
+  return $client_order_id;
 }
 
 function om_get_gas_list($order_by='nome') {

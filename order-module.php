@@ -3,7 +3,7 @@
  * Plugin Name: Order Module
  * Plugin URI: 
  * Description: Create, show and handle an order module with your products.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: Marco Bolis
  * Author URI:
  * License: GPL3
@@ -294,10 +294,28 @@ function om_new_order() {
 
 if (is_admin()) {
   add_action('wp_ajax_order_form_submit', 'om_json_order_form_submit');
-  //add_action('wp_ajax_nopriv_order_form_submit', 'om_json_order_form_submit');
   function om_json_order_form_submit() {
-    if (current_user_can('read'))  {
-      echo '<pre>' . print_r($_POST, TRUE) . '</pre>';
+    if ($_POST['action'] === 'order_form_submit' && current_user_can('read')) {
+      global $wpdb;
+      header('Content-Type: application/json');
+      $id = om_save_client_order($_POST);
+      if ($id > 0) {
+        $order_data = om_get_client_order_full($id);
+        require_once dirname(__FILE__) . '/excel_report.php';
+        om_send_client_order_report($order_data);
+      } else {
+        ob_start();
+        $wpdb->show_errors();
+	$wpdb->print_error();
+        $wpdb->hide_errors();
+        $message = ob_get_contents();
+        ob_end_clean();
+      }
+      $result = array(
+        'status' => $id <= 0 ? $id : 1,
+        'message' => $message
+      );
+      echo json_encode($result);
     }
 //    header('Content-Type: application/json');
 //    $order = om_get_top_orders(1)[0];
@@ -365,7 +383,7 @@ function om_order_form_data($content) {
     $content .= '
       <script>
         ajaxurl = "' . admin_url('admin-ajax.php') . '";
-        //username("' . $user->user_login . '");
+        username = "' . $user->user_login . '";
         jQuery(function() {
           loadGasList(' . json_encode($gas_list) . ');
           loadProducts(' . json_encode($products_data) . ');

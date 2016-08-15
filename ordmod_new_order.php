@@ -55,7 +55,7 @@
   var pastQuarter = minutes % 15;
   if (pastQuarter != 0) {
     console.log(minutes, pastQuarter)
-    now.setMinutes(minutes + 15 - pastQuarter);
+    now.setMinutes(minutes - pastQuarter);
   }
 
   var closeDatePicker = $('#om_form_close_date').datetimepicker({

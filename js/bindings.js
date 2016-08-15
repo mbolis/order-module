@@ -1,7 +1,12 @@
 function Page(template) {
   this.template = template;
 }
-Page.prototype.valid = true;
+
+function SplashPage() {
+  Page.call(this, 'splash');
+  this.visited = false;
+  this.valid = true;
+}
 
 var RE_TELEFONO = /^[-+0-9 \t()]+$/;
 
@@ -54,7 +59,7 @@ function ProductsPage(typology, products) {
     for (var i in this.products) {
       valid &= this.products[i].valid();
     }
-    return valid;
+    return !!valid;
   }, this);
   this.subTotalFloat = ko.computed(function() {
     var sum = 0;
@@ -67,7 +72,7 @@ function ProductsPage(typology, products) {
     return sum;
   }, this);
   this.subTotal = ko.computed(function() {
-    return this.subTotalFloat().toFixed(2) + '&euro;'
+    return this.subTotalFloat().toFixed(2) + ' &euro;'
   }, this);
 }
 
@@ -93,19 +98,23 @@ function Product(p) {
   }, this);
   this.finalPrice = ko.computed(function() {
     var price = this.finalPriceFloat();
-    return price ? price.toFixed(2) + '&euro;' : '';
+    return price ? price.toFixed(2) + ' &euro;' : '';
   }, this);
 }
 
-function SummaryPage(pages) {
+var username;
+
+var splashPage, contactPage, productsPages = ko.observableArray([]), summaryPage, finalPage;
+function SummaryPage() {
   Page.call(this, 'summary');
+  this.username = ko.computed(function() {
+    return username;
+  });
   this.typologies = ko.computed(function() {
-    var ps = pages.slice(2);
-    return ps.slice(0, ps.length - 1);
+    return productsPages();
   });
   this.contacts = ko.computed(function() {
-    console.log(pages()[1])
-    return pages()[1];
+    return contactPage;
   });
   this.totalPrice = ko.computed(function() {
     var totalPrice = 0;
@@ -116,18 +125,26 @@ function SummaryPage(pages) {
         totalPrice += products[p].finalPriceFloat();
       }
     }
-    return totalPrice.toFixed(2) + '&euro;';
+    return totalPrice.toFixed(2) + ' &euro;';
   }, this);
 }
 SummaryPage.prototype.valid = true;
 
+function FinalPage(result) {
+  Page.call(this, 'final');
+  this.result = result;
+}
+FinalPage.prototype.valid = false;
+
+var viewModel = new ViewModel;
 function ViewModel() {
   var page = ko.observable(0);
+
   var pages = ko.observableArray([
-    new Page('splash'),
-    new ContactPage([])
+    splashPage = new SplashPage(),
+    contactPage = new ContactPage([]),
+    summaryPage = new SummaryPage()
   ]);
-  pages.push(new SummaryPage(pages));
 
   this.currentPage = ko.computed(function() {
     return pages()[page()];
@@ -135,33 +152,71 @@ function ViewModel() {
   this.isFirst = ko.computed(function() { return page() === 0 });
   this.isLast = ko.computed(function() { return page() === pages().length - 1 });
 
-  this.next = function() {
-    var idx = page() + 1
+  function setPage(idx) {
     page(idx);
-
     var p = pages()[idx];
     location.hash = '#' + p.template + (p.typology ? '!t:' + p.typology : '');
+  }
+  this.next = function() {
+    pages()[0].visited = true;
+    setPage(page() + 1);
   };
   this.back = function() {
-    var idx = page() - 1
-    page(idx);
-
-    var p = pages()[idx];
-    location.hash = '#' + p.template + (p.typology ? '!t:' + p.typology : '');
+    setPage(page() - 1);
   };
   this.submit = function() {
-    var form = document.getElementById('om_order_form');
-    form.action = ajaxurl; // set from PHP side
-    form.submit();
+    var data = {
+      action : 'order_form_submit',
+      client : {
+        username : username,
+        note : this.notes(),
+        nome : contactPage.cliente.nome()
+      }
+    };
+    if (contactPage.id_gas()) {
+      data.client.id_gas = contactPage.id_gas();
+    } else {
+      data.client.indirizzo = contactPage.cliente.indirizzo;
+      data.client.telefono = contactPage.cliente.telefono;
+    }
+
+    var products = [], prodPages = productsPages();
+    for (var t in prodPages) {
+      var typology = prodPages[t].products;
+      for (var p in typology) {
+        var product = typology[p];
+        if (product.qtyFloat()) {
+          products.push({
+            id_prodotto_ordine : product.id,
+            quantita : product.qtyFloat() });
+        }
+      }
+    }
+    data.products = products;
+
+    jQuery.ajax({
+      url : ajaxurl,
+      type : 'POST',
+      data : data,
+      dataType : 'json',
+      success : function(result) {
+        pages.push(new FinalPage(result));
+        setPage(page() + 1);
+      },
+      error : function(xhr, a, b, c) {
+        pages.push(new FinalPage({status:-xhr.status}));
+        setPage(page() + 1);
+      }
+    });
   };
 
   this.grandTotal = ko.computed(function() {
     var sum = 0;
-    var selectedPages = pages.slice(2);
-    for (var i = 0; i < selectedPages.length - 1; i++) {
-      sum += selectedPages[i].subTotalFloat();
+    var prodPages = productsPages();
+    for (var i = 0; i < prodPages.length; i++) {
+      sum += prodPages[i].subTotalFloat();
     }
-    return sum.toFixed(2) + '&euro;';
+    return sum.toFixed(2) + ' &euro;';
   }, this);
 
   this.notes = ko.observable('');
@@ -184,6 +239,9 @@ function ViewModel() {
     }
   
     var ps = pages();
+    if (!splashPage.visited) {
+      return setPage(0);
+    }
     for (var i = 0; i < ps.length; i++) {
       var p = ps[i];
       if (p.template === path) {
@@ -194,26 +252,23 @@ function ViewModel() {
     }
   }
 
+  route();
+
   window.loadGasList = function(data) {
-    var contactPage = pages()[1];
     contactPage.gasList(data);
   }
 
   window.loadProducts = function(data) {
-    var removedPages = pages.splice(2);
+    productsPages.removeAll();
     for (var i in data) {
       var pp = data[i];
       if (pp[1].length) {
-        pages.push(new ProductsPage(pp[0], pp[1]));
+        productsPages.push(new ProductsPage(pp[0], pp[1]));
       }
     }
-    pages.push(removedPages[removedPages.length - 1]);
+    pages([splashPage, contactPage].concat(productsPages()).concat(summaryPage));
     route();
   }
 }
-ViewModel.prototype.ajaxurl = ajaxurl;
-var viewModel = new ViewModel;
-viewModel.route();
 ko.applyBindings(viewModel);
-
 window.addEventListener('popstate', viewModel.route);

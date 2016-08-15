@@ -2,9 +2,9 @@
   <!--ko template: template--><!--/ko-->
   <div data-bind="if: valid">
     <!--ko with: $root-->
-    <button style="float:left" data-bind="visible: !isFirst(), click: back">Indietro</button>
-    <button style="float:right" data-bind="visible: isLast(), click: submit">Invia</button>
-    <button style="float:right" data-bind="visible: !isLast(), click: next">Avanti</button>
+      <button style="float:left" data-bind="visible: !isFirst(), click: back">Indietro</button>
+      <button style="float:right" data-bind="visible: isLast(), click: submit">Invia</button>
+      <button style="float:right" data-bind="visible: !isLast(), click: next">Avanti</button>
     <!--/ko-->
   </div>
 </div>
@@ -65,8 +65,7 @@
   </p>
 </script>
 <script type="text/html" id="summary">
-  <form id="om_order_form" method="POST" data-bind="attr: { action : $root.ajaxurl }">
-    <input type="hidden" name="action" value="order_form_submit">
+  <form>
     <table>
       <thead>
         <tr>
@@ -107,13 +106,52 @@
       <em>Note:</em><br>
       <textarea name="note" data-bind="textInput: $root.notes"></textarea>
     </p>
+    <h3>I tuoi dati:</h3>
     <p data-bind="with: contacts">
+      <strong>Nome: </strong><!--ko text: cliente.nome--><!--/ko--><br>
       <!--ko if: gas-->
         <!--ko with: gas-->
-          <h3>GAS</h3>
-          <strong>Nome: </strong><!--ko text: nome--><!--/ko-->
+          <strong>GAS: </strong><!--ko text: nome--><!--/ko--><br>
+          <strong>Zona: </strong><!--ko text: area--><!--/ko--><br>
+          <strong>Referente: </strong><!--ko text: nome_contatto--><!--/ko-->
+        <!--/ko-->
+      <!--/ko-->
+      <!--ko ifnot: gas-->
+        <!--ko with: cliente-->
+          <strong>Indirizzo: </strong><!--ko text: indirizzo--><!--/ko--><br>
+          <strong>Telefono: </strong><!--ko text: telefono--><!--/ko--><br>
         <!--/ko-->
       <!--/ko-->
     </p>
   </form>
+</script>
+<script type="text/html" id="final">
+  <!--ko with: result-->
+  <div data-bind="if: status > 0">
+    <h3>Il tuo ordine è stato inviato con successo.</h3>
+    <p>
+      Ecc.. ecc.. ecc..
+    </p>
+  </div>
+  <div data-bind="if: status < 0">
+    <h3>Non è stato possibile inviare il tuo ordine!</h3>
+    <p data-bind="if: status === -1">
+      <strong>Questo modulo d'ordine non è pi&ugrave; attivo.</strong>
+    </p>
+    <p data-bind="if: status === -2">
+      Si &egrave; verificato un errore nell'inserimento dei dati.<br>
+      Si consiglia di provare pi&ugrave; tardi; se non &egrave; possibile riprovare o il problema persiste, contattateci!<br>
+      <a href="mailto:info@agricantalupo.it">info@agricantalupo.it</a>
+    </p>
+    <p data-bind="if: status <= -400 && status > -500">
+      Si &egrave; verificato un problema nel modulo d'ordine. Contattateci al pi&ugrave; presto!<br>
+      <a href="mailto:info@agricantalupo.it">info@agricantalupo.it</a>
+    </p>
+    <p data-bind="if: status <= -500">
+      Si &egrave; verificato un errore nella gestione della richiesta.<br>
+      Si consiglia di provare pi&ugrave; tardi; se non &egrave; possibile riprovare o il problema persiste, contattateci!<br>
+      <a href="mailto:info@agricantalupo.it">info@agricantalupo.it</a>
+    </p>
+  </div>
+  <!--/ko-->
 </script>
