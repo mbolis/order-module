@@ -79,11 +79,11 @@
     <?php if($pages) { $page = $pages[0]; ?>
       {
         id : <?php echo $page->ID; ?>,
-        title : '<?php echo str_replace("'", "\\'", $page->post_title); ?>'
-      }<?php } foreach($pages as $page) { ?>,
+        title : <?php echo json_encode($page->post_title); ?>
+      }<?php } for($i=1; $i<count($pages); $i++) { $page = $pages[$i]; ?>,
       {
         id : <?php echo $page->ID; ?>,
-        title : '<?php echo str_replace("'", "\\'", $page->post_title); ?>'
+        title : <?php echo json_encode($page->post_title); ?>
       }
     <?php } ?>
   ];

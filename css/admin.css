@@ -1,3 +1,8 @@
+#col-left {
+  position : relative;
+  clear : left;
+  float : left;
+}
 .om-order-list li {
   padding : 0.25em 0.5em;
   border-radius : 0.5em;
@@ -14,8 +19,23 @@
   background-color : #bcf;
   cursor : pointer;
 }
+.om-order-selected-row {
+  background-color : #cfcfff;
+}
+.om-info-area {
+  display : none;
+  padding : 0.25em 0.5em;
+  border-radius : 0.5em;
+  background-color : white;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  float : left;
+  margin-left : 1em;
+}
 .om-new-order {
   float : right;
+}
+.om-new-order, .om-order-info-button {
   margin : 1em;
   padding : 0.125em 0.5em;
   line-height : 1.5em;
@@ -25,10 +45,11 @@
   color : #23282d;
   text-decoration : none;
 }
-.om-new-order:hover {
+.om-new-order:hover, .om-order-info-button:hover {
   background-color : #89f;
   border-color : #abf;
   color : #23282d;
+  cursor : pointer;
 }
 .om-form-row {
   padding : 0.25em;
@@ -56,7 +77,7 @@
   text-align : center;
   cursor : default;
 }
-.om-form-row input[type='text'] {
+.om-form-row input[type='text'], .om-form-row textarea {
   width : 32%;
 }
 .om-form-row input[type='text'].medium {
@@ -155,4 +176,38 @@ label.om-delete-product, label.om-add-product, label.om-undelete-product {
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
   padding : 1em;
   display : inline-block;
+}
+.om-hazard-wrapper {
+  position : absolute;
+  top : 0;
+  right : 0;
+  padding : 0 1em;
+  text-align : right;
+}
+.om-hazard-wrapper button {
+  color : #a00;
+  background : pink;
+  border : 1px solid red;
+  border-radius : 8px;
+  padding : 0.25em 0.5em;
+  cursor : pointer;
+}
+.om-hazard-container {
+  display : none;
+  text-align : left;
+  border : 1px solid red;
+  padding : 0.5em;
+  margin : 0.5em 0;
+  border-radius : 8px;
+}
+.om-hazard-container form {
+  padding : 0.25em 0;
+}
+.om-hazard-container button {
+  background : white;
+  color : red;
+}
+.om-hazard-container button:hover {
+  background : pink;
+  color : #a00;
 }

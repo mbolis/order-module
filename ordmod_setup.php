@@ -29,6 +29,8 @@ function om_install() {
     id_ordine int(11) NOT NULL,
     id_prodotto int(11) NOT NULL,
     prezzo decimal(11,3) NOT NULL,
+    extra bit,
+    extra_testo text,
     PRIMARY KEY  (id)
   ) $charset_collate;";
 
@@ -65,9 +67,11 @@ function om_install() {
     unita_misura varchar(20) NOT NULL,
     unita_misura_plurale varchar(20) NOT NULL,
     provenienza text,
-    pagina varchar(255),
+    id_pagina bigint(20) unsigned,
     prezzo decimal(11,3),
     attivo bit,
+    extra bit,
+    extra_testo text,
     PRIMARY KEY  (id)
   ) $charset_collate;";
 
@@ -93,6 +97,42 @@ function om_install() {
   ));
 }
 
+function om_nuke_db() {
+  global $wpdb;
+  $prefix = $wpdb->prefix . 'om_';
+  $order_table = $prefix . 'ordine';
+  $order_product_table = $prefix . 'prodotto_ordine';
+  $order_client_table = $prefix . 'ordine_cliente';
+  $order_row_table = $prefix . 'riga_ordine';
+  $product_table = $prefix . 'prodotto';
+  $gas_table = $prefix . 'gas';
+
+  $wpdb->query("DROP TABLE IF EXISTS $order_table");
+  $wpdb->query("DROP TABLE IF EXISTS $order_product_table");
+  $wpdb->query("DROP TABLE IF EXISTS $order_client_table");
+  $wpdb->query("DROP TABLE IF EXISTS $order_row_table");
+  $wpdb->query("DROP TABLE IF EXISTS $product_table");
+  $wpdb->query("DROP TABLE IF EXISTS $gas_table");
+}
+function om_nuke_options() {
+    $page_id = get_option('om_main_form_page_id');
+    delete_option('om_main_form_page_id');
+    wp_delete_post($page_id, TRUE);
+
+    delete_option('om_main_form_page');
+    delete_option('om_main_form_splash');
+    delete_option('om_product_typologies');
+    delete_option('om_product_units');
+
+    delete_option('om_notification_mail_subject');
+    delete_option('om_notification_mail_text');
+
+    delete_option('om_message_order_not_available');
+    delete_option('om_message_order_is_closed');
+    delete_option('om_message_form_success');
+    delete_option('om_message_form_expired');
+}
+
 function om_has_active_order() {
   global $wpdb;
   $order_table = $wpdb->prefix . 'om_ordine';
@@ -107,12 +147,20 @@ function om_has_active_order() {
 function om_get_top_orders($depth=2) {
   global $wpdb;
   $order_table = $wpdb->prefix . 'om_ordine';
+  $depth = (int) $depth;
+  if ($depth === 0) {
+    return array();
+  }
+  if ($depth > 0) {
+    $limit = "LIMIT $depth";
+  }
   return $wpdb->get_results("
     SELECT *
     FROM $order_table
     ORDER BY dt_chiusura DESC
-    LIMIT $depth
-  ");
+    $limit ",
+    ARRAY_A
+  );
 }
 
 function om_save_order($ordine, $prodotti) {
@@ -132,12 +180,16 @@ function om_save_order($ordine, $prodotti) {
         $product_table,
         array(
           'prezzo' => $prodotto['prezzo'],
-          'attivo' => 1
+          'attivo' => 1,
+          'extra' => $prodotto['extra'],
+          'extra_testo' => $prodotto['extra_testo'],
         ),
         array('id' => $prodotto['id']),
         array(
           '%f',
-          '%d'
+          '%d',
+          '%d',
+          '%s',
         ),
         array('%d')
       );
@@ -148,9 +200,17 @@ function om_save_order($ordine, $prodotti) {
         array(
           'id_ordine' => $id_ordine,
           'id_prodotto' => $prodotto['id'],
-          'prezzo' => $prodotto['prezzo']
+          'prezzo' => $prodotto['prezzo'],
+          'extra' => $prodotto['extra'],
+          'extra_testo' => $prodotto['extra_testo'],
         ),
-        array('%d', '%d', '%f')
+        array(
+          '%d',
+          '%d',
+          '%f',
+          '%d',
+          '%s',
+        )
       );
     }
     return $inserted;
@@ -158,6 +218,99 @@ function om_save_order($ordine, $prodotti) {
   return FALSE;
 }
 
+function om_delete_order($id_ordine) {
+  global $wpdb;
+  $order_table = $wpdb->prefix . 'om_ordine';
+  return $wpdb->delete($order_table, array('id' => $id_ordine), array('%d')) === 1;
+}
+
+function om_get_all_client_orders_full($order_id) {
+  global $wpdb;
+
+  $order_product_table = $wpdb->prefix . 'om_prodotto_ordine';
+  $product_table = $wpdb->prefix . 'om_prodotto';
+
+  $product_rows = $wpdb->get_results(
+    $wpdb->prepare("
+      SELECT
+        po.id,
+        p.tipologia,
+        UPPER(p.nome) AS nome,
+        p.provenienza,
+        po.prezzo,
+        p.unita_misura
+      FROM $order_product_table po
+      INNER JOIN $product_table p ON (p.id=po.id_prodotto)
+      WHERE po.id_ordine = %d
+      ORDER BY nome ",
+      $order_id
+    ),
+    ARRAY_A
+  );
+
+  $products = array();
+  foreach ($product_rows as $product) {
+    $products[$product['id']] = $product;
+  }
+
+  $order_row_table = $wpdb->prefix . 'om_riga_ordine';
+  $client_order_table = $wpdb->prefix . 'om_ordine_cliente';
+  $gas_table = $wpdb->prefix . 'om_gas';
+
+  $order_rows = $wpdb->get_results(
+    $wpdb->prepare("
+      SELECT
+        cli.id AS id_cliente,
+        cli.nome AS nome_cliente,
+        gas.id AS id_gas,
+        gas.nome AS nome_gas,
+        gas.nome_contatto AS nome_contatto_gas,
+        COALESCE(gas.area, cli.area) AS zona,
+        COALESCE(gas.indirizzo, cli.indirizzo) AS indirizzo,
+        COALESCE(gas.telefono, cli.telefono) AS telefono,
+        cli.note,
+        ro.id_prodotto_ordine,
+        ro.quantita
+      FROM $client_order_table cli
+      INNER JOIN $order_row_table ro ON (ro.id_ordine_cliente=cli.id)
+      LEFT OUTER JOIN $gas_table gas ON (gas.id=cli.id_gas)
+      WHERE cli.id_ordine = %d
+      ORDER BY ISNULL(nome_gas), nome_gas, ISNULL(zona), zona, nome_cliente ",
+      $order_id
+    ),
+    ARRAY_A
+  );
+
+  $client_orders = array();
+  foreach ($order_rows as $row) {
+    $client_id = $row['id_cliente'];
+    if ($row['id_cliente'] !== $last_client_id) {
+      $last_client_id = $client_id;
+      if (isset($order)) {
+        $client_orders[] = $order;
+      }
+      $order = array(
+        'id_cliente' => $client_id,
+        'nome_cliente' => $row['nome_cliente'],
+        'id_gas' => $row['id_gas'],
+        'nome_gas' => $row['nome_gas'],
+        'nome_contatto_gas' => $row['nome_contatto_gas'],
+        'zona' => $row['zona'],
+        'indirizzo' => $row['indirizzo'],
+        'telefono' => $row['telefono'],
+        'note' => $row['note'],
+        'righe_ordine' => array(),
+      );
+    }
+    $order['righe_ordine'][$row['id_prodotto_ordine']] = $row['quantita'];
+  }
+  $client_orders[] = $order;
+
+  return array(
+    'products' => $products,
+    'client_orders' => $client_orders,
+  );
+}
 function om_get_client_order_full($client_order_id) {
   global $wpdb;
 
@@ -190,6 +343,10 @@ function om_get_client_order_full($client_order_id) {
     ARRAY_A
   );
 
+  $order_product_table = $wpdb->prefix . 'om_prodotto_ordine';
+  $product_table = $wpdb->prefix . 'om_prodotto';
+  $order_row_table = $wpdb->prefix . 'om_riga_ordine';
+
   $products = $wpdb->get_results(
     $wpdb->prepare("
       SELECT
@@ -199,9 +356,9 @@ function om_get_client_order_full($client_order_id) {
         po.prezzo,
         p.unita_misura,
         ro.quantita
-      FROM wp_om_prodotto_ordine po
-      INNER JOIN wp_om_prodotto p ON (p.id=po.id_prodotto)
-      LEFT OUTER JOIN wp_om_riga_ordine ro ON (ro.id_prodotto_ordine=p.id)
+      FROM $order_product_table po
+      INNER JOIN $product_table p ON (p.id=po.id_prodotto)
+      LEFT OUTER JOIN $order_row_table ro ON (ro.id_prodotto_ordine=po.id)
       WHERE po.id_ordine = %d
       AND (ro.id_ordine_cliente IS NULL OR ro.id_ordine_cliente = %d )
       ORDER BY nome",
@@ -345,8 +502,9 @@ function om_get_products_data($order_by='tipologia, nome') {
   return $wpdb->get_results("
     SELECT *
     FROM $product_table
-    ORDER BY $order_by
-  ");
+    ORDER BY $order_by ",
+    ARRAY_A
+  );
 }
 
 function om_update_products($to_update) {
@@ -355,18 +513,22 @@ function om_update_products($to_update) {
   $updated = 0;
   foreach ($to_update as $row) {
     $id = (int) $row['id'];
-    unset($row['id']);
-    if (!$row['id_pagina']) {
-      unset($row['id_pagina']);
-    }
-    $updated += $wpdb->update($product_table, $row, array('id' => $id), array(
-      'nome' => '%s',
-      'tipologia' => '%s',
-      'unita_misura' => '%s',
-      'unita_misura_plurale' => '%s',
-      'provenienza' => '%s',
-      'id_pagina' => '%d',
-    ), '%d');
+    $updrow = _om_get_product_db_info($row);
+    $updated += $wpdb->update($product_table,
+      $updrow,
+      array('id' => $id),
+      array(
+        'nome' => '%s',
+        'tipologia' => '%s',
+        'unita_misura' => '%s',
+        'unita_misura_plurale' => '%s',
+        'provenienza' => '%s',
+        'id_pagina' => '%d',
+        'pagina' => '%s',
+        'immagine' => '%s',
+      ),
+      '%d'
+    );
   }
   return $updated === count($to_update);
 }
@@ -375,19 +537,35 @@ function om_insert_products($to_insert) {
   $product_table = $wpdb->prefix . 'om_prodotto';
   $inserted = 0;
   foreach ($to_insert as $row) {
-    if (!$row['id_pagina']) {
-      unset($row['id_pagina']);
-    }
-    $inserted += $wpdb->insert($product_table, $row, array(
-      'nome' => '%s',
-      'tipologia' => '%s',
-      'unita_misura' => '%s',
-      'unita_misura_plurale' => '%s',
-      'provenienza' => '%s',
-      'id_pagina' => '%d',
-    ));
+    $insrow = _om_get_product_db_info($row);
+    $inserted += $wpdb->insert($product_table,
+      $insrow,
+      array(
+        'nome' => '%s',
+        'tipologia' => '%s',
+        'unita_misura' => '%s',
+        'unita_misura_plurale' => '%s',
+        'provenienza' => '%s',
+        'id_pagina' => '%d',
+        'pagina' => '%s',
+        'immagine' => '%s',
+      )
+    );
   }
   return $inserted === count($to_insert);
+}
+function _om_get_product_db_info($row) {
+  $db_info = array(
+    'nome' => stripslashes($row['nome']),
+    'tipologia' => $row['tipologia'],
+    'unita_misura' => $row['unita_misura'],
+    'unita_misura_plurale' => $row['unita_misura_plurale'],
+    'provenienza' => stripslashes($row['provenienza']),
+  );
+  if ($row['id_pagina']) {
+    $db_info['id_pagina'] = $row['id_pagina'];
+  }
+  return $db_info;
 }
 function om_delete_products($to_delete) {
   global $wpdb;
@@ -412,13 +590,16 @@ function om_get_order_products($order_id) {
              p.unita_misura,
              p.unita_misura_plurale,
              p.provenienza,
-             p.pagina,
+             p.id_pagina,
+             op.id AS id_prodotto_ordine,
              op.prezzo
-      FROM $order_product_table op INNER JOIN $product_table p ON (op.id_prodotto=p.id)
+      FROM $order_product_table op
+      INNER JOIN $product_table p ON (op.id_prodotto=p.id)
       WHERE op.id_ordine=%d
       ORDER BY tipologia, nome",
       $order_id
-    )
+    ),
+    ARRAY_A
   );
 }
 
@@ -437,18 +618,20 @@ function om_set_options() {
     );
     $page_id = wp_insert_post($page);
     add_option('om_main_form_page_id', $page_id);
+    add_post_meta($page_id, 'block', 1);
 
     add_option('om_main_form_page', 'om_main_form');
     add_option('om_main_form_splash', '');
     add_option('om_product_typologies', '');
     add_option('om_product_units', '');
+
+    add_option('om_notification_mail_subject', 'Conferma ordine');
+    add_option('om_notification_mail_text', 'Il suo ordine è stato correttamente inviato. In allegato la ricevuta.');
+
+    add_option('om_message_order_not_available', 'Al momento non &egrave; possibile effettuare ordini. Riprovare pi&ugrave; tardi.');
+    add_option('om_message_order_is_closed', 'Ordine chiuso. Non &egrave; pi&ugrave; possibile effettuare richieste fino all\'apertura di un nuovo ordine.');
+    add_option('om_message_form_success', 'Riceverai una mail di conferma al pi&ugrave; presto.');
+    add_option('om_message_form_expired', 'Non &egrave; possibile portare a termine la richiesta, in quanto l\'ordine risulta chiuso.');
   }
-}
-function om_reset_options() {
-  //delete_option('om_main_form_page_id');
-  //delete_option('om_main_form_page');
-  //delete_option('om_main_form_splash_page');
-  //delete_option('om_product_typologies', '');
-  //delete_option('om_product_units');
 }
 ?>

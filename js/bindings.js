@@ -1,5 +1,6 @@
 function Page(template) {
   this.template = template;
+  this.onRender = function() {};
 }
 
 function SplashPage() {
@@ -82,6 +83,9 @@ function Product(p) {
   for (var k in p) {
     this[k] = p[k];
   }
+  this.unitaMisuraAbbr = ko.computed(function() {
+    return this.unita_misura.length <= 2 ? this.unita_misura : this.unita_misura[0];
+  }, this);
   this.prezzoDisplay = ko.computed(function() {
     return Number(this.prezzo).toFixed(2).replace(/\./, ',');
   }, this);
@@ -134,7 +138,8 @@ function FinalPage(result) {
   Page.call(this, 'final');
   this.result = result;
 }
-FinalPage.prototype.valid = false;
+FinalPage.prototype.valid = true;
+FinalPage.prototype.isFinal = true;
 
 var viewModel = new ViewModel;
 function ViewModel() {
@@ -160,11 +165,15 @@ function ViewModel() {
   this.next = function() {
     pages()[0].visited = true;
     setPage(page() + 1);
+    window.scrollTo(0, $('.entry').prevAll('h2').offset().top - 32);
   };
   this.back = function() {
     setPage(page() - 1);
+    window.scrollTo(0, $('.entry').prevAll('h2').offset().top - 32);
   };
-  this.submit = function() {
+  this.submit = function(viewModel) {
+    viewModel.lock(true);
+
     var data = {
       action : 'order_form_submit',
       client : {
@@ -187,7 +196,7 @@ function ViewModel() {
         var product = typology[p];
         if (product.qtyFloat()) {
           products.push({
-            id_prodotto_ordine : product.id,
+            id_prodotto_ordine : product.id_prodotto_ordine,
             quantita : product.qtyFloat() });
         }
       }
@@ -202,13 +211,17 @@ function ViewModel() {
       success : function(result) {
         pages.push(new FinalPage(result));
         setPage(page() + 1);
+        viewModel.lock(false);
       },
       error : function(xhr, a, b, c) {
         pages.push(new FinalPage({status:-xhr.status}));
         setPage(page() + 1);
+        viewModel.lock(false);
       }
     });
   };
+
+  this.lock = ko.observable(false);
 
   this.grandTotal = ko.computed(function() {
     var sum = 0;

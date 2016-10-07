@@ -18,22 +18,45 @@
           <div class="om-error-message"><?php echo $error_dta; ?></div>
           <div class="om-error-message"><?php echo $error_dtc; ?></div>
         </fieldset>
-        <?php for ($i=0; $i<count($all_products); $i++) {
-            $product = $all_products[$i];
-            $error = $errors['prodotti'][$i]; ?>
+        <?php
+          $typologies = preg_split('/\\s*,\\s*/', trim(get_option('om_product_typologies')));
+          $p_i = 0;
+          foreach ($typologies as $typology) {
+            $typology_attr = htmlspecialchars($typology);
+            $typology_html = htmlentities($typology);
+            echo "<h3>$typology_html</h3>";
+
+            $products = $all_products[$typology];
+            $typology_errors = $errors['prodotti'][$typology];
+            for ($i=0; $i<count($products); $i++) {
+              $product = $products[$i];
+              $error = $typology_errors[$i]; 
+
+              $name_path = "prodotti[$typology_attr][$i]"; ?>
 
           <fieldset class="om-form-row">
-            <input type="hidden" name="prodotti[<?php echo $i; ?>][id]" value="<?php echo $product['id']; ?>" />
-            <input type="checkbox" id="om_form_chk_<?php echo $i; ?>" name="prodotti[<?php echo $i; ?>][attivo]" value="1" <?php if ($product['attivo']) { echo 'checked'; } ?> />
-            <label for="om_form_chk_<?php echo $i; ?>" class="om-product-name small"><?php echo $product['nome']; ?></label>
-            <input type="hidden" name="prodotti[<?php echo $i; ?>][nome]" value="<?php echo $product['nome']; ?>">
-            <input type="text" id="om_form_price_<?php echo $i; ?>" name="prodotti[<?php echo $i; ?>][prezzo]" class="smaller<?php if($error) { ?> om-error<?php } ?>" value="<?php echo $product['prezzo']; ?>" />
-            <input type="hidden" name="prodotti[<?php echo $i; ?>][unita_misura]" value="<?php echo $product['unita_misura']; ?>">
-            &euro;/<?php echo $product['unita_misura']; ?>
-            <span class="om-error-message"><?php echo $error; ?></span>
+            <input type="hidden" name="<?php echo $name_path; ?>[id]" value="<?php echo $product['id']; ?>" />
+            <input type="hidden" name="<?php echo $name_path; ?>[tipologia]" value="<?php echo htmlspecialchars($product['tipologia']); ?>" />
+            <input type="hidden" name="<?php echo $name_path; ?>[nome]" value="<?php echo htmlspecialchars($product['nome']); ?>">
+            <input type="hidden" name="<?php echo $name_path; ?>[unita_misura]" value="<?php echo htmlspecialchars($product['unita_misura']); ?>">
+
+            <input type="checkbox" name="<?php echo $name_path; ?>[attivo]" id="om_form_chk_<?php echo $p_i; ?>" value="1" <?php if ($product['attivo']) { echo 'checked'; } ?> />
+            <label for="om_form_chk_<?php echo $p_i; ?>" class="om-product-name small"><?php echo htmlentities($product['nome']); ?></label>
+            <input type="text" name="<?php echo $name_path; ?>[prezzo]" class="smaller<?php if($error) { ?> om-error<?php } ?>" value="<?php echo $product['prezzo']; ?>" />
+            <span style="display:inline-block;min-width:120px">&euro;/<?php echo htmlentities($product['unita_misura']); ?></span>
+            <input type="checkbox" name="<?php echo $name_path; ?>[extra]" id="om_form_extra_chk_<?php echo $p_i; ?>" value="1" <?php if ($product['extra']) { echo 'checked'; } ?> />
+            <label for="om_form_extra_chk_<?php echo $p_i; ?>" class="smallest">Extra:</label>
+            <input type="text" name="<?php echo $name_path; ?>[extra_testo]" class="large" value="<?php echo htmlspecialchars($product['extra_testo']); ?>" />
+
+            <?php if ($error) {
+		?><br><span class="om-error-message"><?php echo $error; ?></span><?php
+		} ?>
           </fieldset>
 
-        <?php } ?>
+        <?php
+              $p_i++;
+            }
+          } ?>
         <input type="submit" class="button" name="submit" value="Avvia Ordine" />
       </form>
     </div>
@@ -54,7 +77,6 @@
   var minutes = now.getMinutes();
   var pastQuarter = minutes % 15;
   if (pastQuarter != 0) {
-    console.log(minutes, pastQuarter)
     now.setMinutes(minutes - pastQuarter);
   }
 
