@@ -3,7 +3,7 @@
  * Plugin Name: Order Module
  * Plugin URI: 
  * Description: Create, show and handle an order module with your products.
- * Version: 0.4.0
+ * Version: 0.4.2
  * Author: Marco Bolis
  * Author URI:
  * License: GPL3
@@ -26,12 +26,22 @@ function om_show_menu_entries() {
   add_submenu_page('om-orders', 'Elenco GAS', 'GAS', 'manage_options', 'om-gas', 'om_gas');
 }
 
+if (is_admin() && strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_GET['page'] === 'om-orders' && (isset($_POST['edit_order']) || isset($_POST['reopen_order']))) {
+  add_action('admin_init', 'om_edit_reopen_order', 1);
+}
+function om_edit_reopen_order() {
+  if (current_user_can('manage_options')) {
+    $order_id = (int) $_POST['id_ordine'];
+    wp_redirect(admin_url('/admin.php?page=om-new-order&id_ordine=' . $order_id));
+    exit;
+  }
+}
 if (is_admin() && strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_GET['page'] === 'om-orders' && isset($_POST['download_report'])) {
   add_action('admin_init', 'om_download_admin_report', 1);
 }
 function om_download_admin_report() {
   if (current_user_can('manage_options')) {
-    $order_id = $_POST['id_ordine'];
+    $order_id = (int) $_POST['id_ordine'];
     $order_data = om_get_all_client_orders_full($order_id);
     require_once dirname(__FILE__) . '/excel_report.php';
     om_write_admin_order_report($order_data);
@@ -49,6 +59,13 @@ function om_orders() {
         $success = 'Ordine eliminato.';
       } else {
         $error = 'Impossibile eliminare ordine.';
+      }
+    }
+    if ($_POST['close_order']) {
+      if (om_close_order($_POST['id_ordine'])) {
+        $success = 'Ordine chiuso.';
+      } else {
+        $error = 'Impossibile chiudere ordine.';
       }
     }
   } else {
@@ -349,9 +366,12 @@ function om_new_order() {
       $ordine['dt_chiusura'] = date('Y-m-d H:i:00', $dt_chiusura);
 
       if (om_save_order($ordine, $prodotti)) {
-        ?>
+        $success = urlencode((
+          $ordine['id'] ? 'Ordine modificato.' : 'Nuovo ordine aperto.') .
+          ' Data di chiusura: ' . date('d/m/Y H:i', $dt_chiusura)
+        ); ?>
           Attendere prego...
-          <script>location.href = '<?php echo admin_url('/admin.php?page=om-orders&success=' . urlencode('Nuovo ordine aperto. Data di chiusura: ' . date('d/m/Y H:i', $dt_chiusura))); ?>';</script>
+          <script>location.href = '<?php echo admin_url("/admin.php?page=om-orders&success=$success"); ?>';</script>
         <?php
 
         exit;
@@ -367,6 +387,12 @@ function om_new_order() {
       } else {
         $all_products[$typology] = array($product);
       }
+    }
+
+    $id_ordine = $_GET['id_ordine'];
+    if ($id_ordine) {
+      $ordine = array('id' => $id_ordine);
+      $dt_apertura = om_get_dt_apertura_ordine($id_ordine);
     }
   }
 

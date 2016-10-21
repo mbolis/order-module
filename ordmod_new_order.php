@@ -11,10 +11,14 @@
         <fieldset class="om-form-dates">
           <?php $error_dta = $errors['dt_apertura']; ?>
           <?php $error_dtc = $errors['dt_chiusura']; ?>
+          <?php if ($ordine['id']) { ?>
+            <input type="hidden" name="ordine[id]" value="<?php echo $ordine['id']; ?>">
+          <?php } ?>
+          
           <label for="om_form_open_date" class="om-form-label">Data di Apertura:</label>
-          <input type="text" id="om_form_open_date" name="ordine[dt_apertura]" <?php if($error_dta) { ?>class="om-error"<?php } ?> value="<?php echo $dt_apertura; ?>" />
+          <input type="text" id="om_form_open_date" name="ordine[dt_apertura]" <?php if($error_dta) { ?>class="om-error"<?php } ?> value="<?php echo $dt_apertura; ?>">
           <label for="om_form_open_date" class="om-form-label">Data di Chiusura:</label>
-          <input type="text" id="om_form_close_date" name="ordine[dt_chiusura]" <?php if($error_dtc) { ?>class="om-error"<?php } ?> value="<?php echo $dt_chiusura; ?>" />
+          <input type="text" id="om_form_close_date" name="ordine[dt_chiusura]" <?php if($error_dtc) { ?>class="om-error"<?php } ?> value="<?php echo $dt_chiusura; ?>">
           <div class="om-error-message"><?php echo $error_dta; ?></div>
           <div class="om-error-message"><?php echo $error_dtc; ?></div>
         </fieldset>
@@ -32,7 +36,8 @@
               $product = $products[$i];
               $error = $typology_errors[$i]; 
 
-              $name_path = "prodotti[$typology_attr][$i]"; ?>
+              $name_path = "prodotti[$typology_attr][$i]";
+          ?>
 
           <fieldset class="om-form-row">
             <input type="hidden" name="<?php echo $name_path; ?>[id]" value="<?php echo $product['id']; ?>" />
@@ -48,22 +53,28 @@
             <label for="om_form_extra_chk_<?php echo $p_i; ?>" class="smallest">Extra:</label>
             <input type="text" name="<?php echo $name_path; ?>[extra_testo]" class="large" value="<?php echo htmlspecialchars($product['extra_testo']); ?>" />
 
-            <?php if ($error) {
-		?><br><span class="om-error-message"><?php echo $error; ?></span><?php
-		} ?>
+            <?php if ($error) { ?><br><span class="om-error-message"><?php echo $error; ?></span><?php } ?>
           </fieldset>
 
         <?php
               $p_i++;
             }
-          } ?>
-        <input type="submit" class="button" name="submit" value="Avvia Ordine" />
+          }
+        ?>
+        <input type="submit" class="button" name="submit" value="<?php echo $ordine['id'] ? 'Conferma' : 'Avvia'; ?> Ordine" />
       </form>
     </div>
   </div>
 </div>
 <script>
 (function($) {
+  document.getElementById('om_form_new_order').onkeypress = checkEnter;
+  function checkEnter(e){
+    e = e || event;
+    var txtArea = /textarea/i.test((e.target || e.srcElement).tagName);
+    return txtArea || (e.keyCode || e.which || e.charCode || 0) !== 13;
+  }
+
   $.datepicker.setDefaults({
     showOn : 'both'
   });

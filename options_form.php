@@ -16,7 +16,7 @@
   <h2>Opzioni</h2>
   <div class="postbox">
     <div class="inside">
-      <form method="POST" accept-charset="utf-8" autocomplete="off">
+      <form id="om_options_form" method="POST" accept-charset="utf-8" autocomplete="off">
         <fieldset class="om-form-row">
           <label for="om_main_form_page">Pagina del modulo d'ordine</label><br>
           <?php $error = $errors['main_form_page']; ?>
@@ -142,6 +142,13 @@
 </div>
 <script>
   (function($) {
+    document.getElementById('om_options_form').onkeypress = checkEnter;
+    function checkEnter(e){
+      e = e || event;
+      var txtArea = /textarea/i.test((e.target || e.srcElement).tagName);
+      return txtArea || (e.keyCode || e.which || e.charCode || 0) !== 13;
+    }
+
     $('.updated,.error').on('click', function() {
       $(this).remove();
     });

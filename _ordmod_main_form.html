@@ -144,12 +144,12 @@
   <!--ko with: result-->
   <div data-bind="if: status > 0">
     <h3>Il tuo ordine è stato inviato con successo.</h3>
-    <p data-bind="template: om_message_form_success"></p>
+    <p data-bind="template: 'om_message_form_success'"></p>
   </div>
   <div data-bind="if: status < 0">
     <h3>Non è stato possibile inviare il tuo ordine!</h3>
     <p data-bind="if: status === -1">
-      <strong data-bind="template: om_message_form_expired"></strong>
+      <strong data-bind="template: 'om_message_form_expired'"></strong>
     </p>
     <p data-bind="if: status === -2">
       Si &egrave; verificato un errore nell'inserimento dei dati.<br>

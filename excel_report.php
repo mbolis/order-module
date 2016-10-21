@@ -44,7 +44,9 @@ function om_send_client_order_report($data, $ext = 'xlsx') {
   $n_products = count($products);
 
   $sheet = $excel->getActiveSheet();
-  $sheet->insertNewRowBefore(5, $n_products - 1);
+  if ($n_products > 1) {
+    $sheet->insertNewRowBefore(5, $n_products - 1);
+  }
 
   $total = 0;
   for ($i = 0; $i < count($products); $i++) {
@@ -91,7 +93,7 @@ function om_send_client_order_report($data, $ext = 'xlsx') {
   $text = get_option('om_notification_mail_text');
   wp_mail($email, $subject, $text, array(), array($file_path));
 
-  _om_delete_excel_file($file_path);
+#  _om_delete_excel_file($file_path);
 
   $excel->disconnectWorksheets();
   return 0;
@@ -352,5 +354,7 @@ Tel.: ${order['telefono']}");
   header('Content-Disposition: attachment; filename="Ordini_'.$week_start.'_'.date('YmdHis').'.'.$ext.'"');
   header('Cache-Control: max-age=0');
   $writer->setPreCalculateFormulas(TRUE)->save('php://output');
+
+  $excel->disconnectWorksheets();
   return 0;
 }

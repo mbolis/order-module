@@ -28,8 +28,8 @@
         <?php } ?>
         <?php if (count($orders)) { ?>
             <li><h3>Ordini Precedenti</h3></li>
-          <?php foreach ($orders as $order) { ?>
-            <li class="om-order-select postbox" data-om-order-id="<?php echo $order['id']; ?>">
+          <?php foreach ($orders as $i => $order) { ?>
+            <li class="om-order-select <?php if($i == 0 && !$current_order) { echo 'om-order-last'; } ?> postbox" data-om-order-id="<?php echo $order['id']; ?>">
               <div class="inside">
                 <span class="om-date-info"><strong>Data apertura:</strong> <?php echo date('d/m/Y H:i', strtotime($order['dt_apertura'])); ?></span><br>
                 <span class="om-date-info"><strong>Data chiusura:</strong> <?php echo date('d/m/Y H:i', strtotime($order['dt_chiusura'])); ?></span>
@@ -45,6 +45,9 @@
           <input type="hidden" id="om_id_ordine" name="id_ordine">
           <input type="submit" id="btn_download_report" class="om-order-info-button" name="download_report" value="Scarica Excel">
           <input type="submit" id="btn_delete_order" class="om-order-info-button" name="delete_order" value="Elimina Ordine">
+          <input type="submit" id="btn_close_order" class="om-order-info-button" name="close_order" value="Chiudi Ordine Corrente">
+          <input type="submit" id="btn_reopen_order" class="om-order-info-button" name="reopen_order" value="Riapri Ordine">
+          <input type="submit" id="btn_edit_order" class="om-order-info-button" name="edit_order" value="Modifica Ordine Corrente">
         </form>
       </div>
     </div>
@@ -63,13 +66,28 @@
       $('.om-info-area').show().css('margin-top', this.offsetTop);
       if ($(this).is('.om-order-current')) {
         $('#btn_delete_order').hide();
+        $('#btn_close_order').show();
+        $('#btn_edit_order').show();
       } else {
         $('#btn_delete_order').show();
+        $('#btn_close_order').hide();
+        $('#btn_edit_order').hide();
+      }
+      if ($(this).is('.om-order-last')) {
+        $('#btn_reopen_order').show();
+      } else {
+        $('#btn_reopen_order').hide();
       }
     });
 
     $('#btn_delete_order').bind('click', function(e) {
       if (!confirm('Si desidera realmente eliminare definitivamente i dati di questo ordine?')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+    $('#btn_close_order').bind('click', function(e) {
+      if (!confirm('Si desidera realmente chiudere anticipatamente l\'ordine corrente?\nNon sarà più possibile riaprirlo.')) {
         e.preventDefault();
         return false;
       }

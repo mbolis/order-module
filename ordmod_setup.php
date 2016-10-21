@@ -166,7 +166,7 @@ function om_get_top_orders($depth=2) {
 function om_save_order($ordine, $prodotti) {
   global $wpdb;
   $order_table = $wpdb->prefix . 'om_ordine';
-  if ($wpdb->insert($order_table, $ordine, '%s')) {
+  if ($wpdb->replace($order_table, $ordine, '%s')) {
     $id_ordine = $wpdb->insert_id;
 
     $product_table = $wpdb->prefix . 'om_prodotto';
@@ -218,10 +218,37 @@ function om_save_order($ordine, $prodotti) {
   return FALSE;
 }
 
+function om_get_dt_apertura_ordine($id_ordine, $format='%d/%m/%Y %H:%i') {
+  global $wpdb;
+  $order_table = $wpdb->prefix . 'om_ordine';
+  return $wpdb->get_var(
+    $wpdb->prepare("
+      SELECT DATE_FORMAT(dt_apertura, %s)
+      FROM $order_table
+      WHERE id = %d ",
+      $id_ordine,
+      $format
+    )
+  );
+}
+
 function om_delete_order($id_ordine) {
   global $wpdb;
   $order_table = $wpdb->prefix . 'om_ordine';
   return $wpdb->delete($order_table, array('id' => $id_ordine), array('%d')) === 1;
+}
+
+function om_close_order($id_ordine) {
+  global $wpdb;
+  $order_table = $wpdb->prefix . 'om_ordine';
+  return $wpdb->query(
+    $wpdb->prepare("
+      UPDATE $order_table
+      SET dt_chiusura=NOW()
+      WHERE id = %d ",
+      $id_ordine
+    )
+  ) === 1;
 }
 
 function om_get_all_client_orders_full($order_id) {
@@ -556,11 +583,11 @@ function om_insert_products($to_insert) {
 }
 function _om_get_product_db_info($row) {
   $db_info = array(
-    'nome' => stripslashes($row['nome']),
+    'nome' => $row['nome'],
     'tipologia' => $row['tipologia'],
     'unita_misura' => $row['unita_misura'],
     'unita_misura_plurale' => $row['unita_misura_plurale'],
-    'provenienza' => stripslashes($row['provenienza']),
+    'provenienza' => $row['provenienza'],
   );
   if ($row['id_pagina']) {
     $db_info['id_pagina'] = $row['id_pagina'];
@@ -592,7 +619,9 @@ function om_get_order_products($order_id) {
              p.provenienza,
              p.id_pagina,
              op.id AS id_prodotto_ordine,
-             op.prezzo
+             op.prezzo,
+             op.extra,
+             op.extra_testo
       FROM $order_product_table op
       INNER JOIN $product_table p ON (op.id_prodotto=p.id)
       WHERE op.id_ordine=%d
