@@ -3,7 +3,7 @@
  * Plugin Name: Order Module
  * Plugin URI: 
  * Description: Create, show and handle an order module with your products.
- * Version: 0.4.2
+ * Version: 0.4.3
  * Author: Marco Bolis
  * Author URI:
  * License: GPL3
@@ -20,24 +20,27 @@ function om_show_menu_entries() {
   add_submenu_page('om-orders', 'Ordini', 'Gestisci', 'manage_options', 'om-orders', 'om_orders');
   if (!om_has_active_order()) {
     add_submenu_page('om-orders', 'Apri un Nuovo Ordine', 'Nuovo Ordine', 'manage_options', 'om-new-order', 'om_new_order');
+  } else {
+    add_submenu_page(NULL, 'Modifica Ordine Corrente', 'Modifica Ordine', 'manage_options', 'om-new-order', 'om_new_order');
   }
   add_submenu_page('om-orders', 'Opzioni Ordini', 'Opzioni', 'manage_options', 'om-options', 'om_options');
   add_submenu_page('om-orders', 'Elenco Prodotti', 'Prodotti', 'manage_options', 'om-products', 'om_products');
   add_submenu_page('om-orders', 'Elenco GAS', 'GAS', 'manage_options', 'om-gas', 'om_gas');
 }
 
-if (is_admin() && strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_GET['page'] === 'om-orders' && (isset($_POST['edit_order']) || isset($_POST['reopen_order']))) {
-  add_action('admin_init', 'om_edit_reopen_order', 1);
+if (is_admin() && strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_GET['page'] === 'om-orders') {
+  if ((isset($_POST['edit_order']) || isset($_POST['reopen_order']))) {
+    add_action('admin_init', 'om_edit_reopen_order', 1);
+  } elseif (isset($_POST['download_report'])) {
+    add_action('admin_init', 'om_download_admin_report', 1);
+  }
 }
 function om_edit_reopen_order() {
   if (current_user_can('manage_options')) {
     $order_id = (int) $_POST['id_ordine'];
-    wp_redirect(admin_url('/admin.php?page=om-new-order&id_ordine=' . $order_id));
+    wp_safe_redirect(admin_url('/admin.php?page=om-new-order&id_ordine=' . $order_id));
     exit;
   }
-}
-if (is_admin() && strtoupper($_SERVER['REQUEST_METHOD']) === 'POST' && $_GET['page'] === 'om-orders' && isset($_POST['download_report'])) {
-  add_action('admin_init', 'om_download_admin_report', 1);
 }
 function om_download_admin_report() {
   if (current_user_can('manage_options')) {

@@ -1,10 +1,3 @@
-#sidebar {
-  display : none;
-}
-#content {
-  width : auto;
-}
-
 .om-order-list li {
   border-radius : 0.5em;
   background-color : #edf;
@@ -63,4 +56,17 @@
 }
 .om-ref-page-image {
   max-width : 400px;
+}
+
+#sidebar {
+  display : none;
+}
+#content {
+  width : auto;
+}
+
+/* FIXME : Hack to hide leftover menu pieces */
+#header-sx, #headerimg, #furgone {
+  height : 368px;
+  overflow : hidden;
 }

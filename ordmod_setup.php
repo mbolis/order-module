@@ -63,9 +63,9 @@ function om_install() {
   $product_sql = "CREATE TABLE $product_table (
     id int(11) NOT NULL AUTO_INCREMENT,
     nome varchar(255) NOT NULL,
-    tipologia varchar(30) NOT NULL,
-    unita_misura varchar(20) NOT NULL,
-    unita_misura_plurale varchar(20) NOT NULL,
+    tipologia varchar(100) NOT NULL,
+    unita_misura varchar(100) NOT NULL,
+    unita_misura_plurale varchar(100) NOT NULL,
     provenienza text,
     id_pagina bigint(20) unsigned,
     prezzo decimal(11,3),
@@ -95,6 +95,14 @@ function om_install() {
     $product_sql,
     $gas_sql,
   ));
+
+  # FIXME : remove me after next update!
+  $wpdb->query("
+    ALTER TABLE $product_table
+    MODIFY COLUMN tipologia varchar(100) NOT NULL,
+    MODIFY COLUMN unita_misura varchar(100) NOT NULL,
+    MODIFY COLUMN unita_misura_plurale varchar(100) NOT NULL
+  ");
 }
 
 function om_nuke_db() {
