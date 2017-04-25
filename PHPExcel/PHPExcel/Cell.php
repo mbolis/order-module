@@ -239,6 +239,7 @@ class PHPExcel_Cell
 				$this->_value = (float)$pValue;
 				break;
 			case PHPExcel_Cell_DataType::TYPE_FORMULA:
+			case PHPExcel_Cell_DataType::TYPE_FORMULA_ARRAY: // PATCH by Max Allan Niklasson
 				$this->_value = (string)$pValue;
 				break;
 			case PHPExcel_Cell_DataType::TYPE_BOOL:
@@ -301,6 +302,8 @@ class PHPExcel_Cell
 			}
 //echo 'Returning calculated value of '.$result.' for cell '.$this->getCoordinate().PHP_EOL;
 			return $result;
+		} elseif ($this->_dataType == PHPExcel_Cell_DataType::TYPE_FORMULA_ARRAY && isset($this->_calculatedValue)) {
+			return $this->_calculatedValue;
 		} elseif($this->_value instanceof PHPExcel_RichText) {
 //		echo 'Cell value for '.$this->getCoordinate().' is rich text: Returning data value of '.$this->_value.'<br />';
 			return $this->_value->getPlainText();
