@@ -7,55 +7,8 @@
 }
 
 /* Modulo d'Ordine */
-.om-line-input {
-  width : 100%;
-}
-.om-txt-info {
-  width : 100%;
-  height : 8em;
-}
-.om-product-table .small {
-  width : 40%;
-}
 .om-unita-misura {
   font-size : 80%;
-  margin-left : 0.25em;
-}
-.om-product-table {
-  width : 100%;
-  border-collapse : collapse;
-  
-}
-.om-product-table td, .om-head-typology {
-  border : 1px solid #373;
-}
-.om-product-table td {
-  height : 2.25em;
-}
-.om-field-unit-price {
-  width : 14%;
-  padding-left : 0.5em;
-}
-.om-field-tot-price, .om-label-total {
-  text-align : right;
-}
-.om-field-product-name {
-  width : 50%;
-}
-.om-field-tot-price {
-  width : 14%;
-  padding : 0 0.25em;
-}
-.om-field-qty {
-  width : 22%;
-}
-.om-ref-page-overlay {
-  background : #99cc66;
-  border : 1px solid #373;
-  padding : 0.125em;
-}
-.om-ref-page-image {
-  max-width : 400px;
 }
 
 #sidebar {
@@ -63,6 +16,13 @@
 }
 #content {
   width : auto;
+}
+
+.form-horizontal .row.row-bordered::after {
+  content : "";
+  display : block;
+  height : 1em;
+  border-bottom : 1px solid #ccc;
 }
 
 /* FIXME : Hack to hide leftover menu pieces */

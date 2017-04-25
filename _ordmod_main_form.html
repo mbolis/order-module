@@ -1,144 +1,177 @@
 <div data-bind="with: currentPage">
   <!--ko template:{name: template, afterRender: onRender}--><!--/ko-->
-  <div data-bind="ifnot: valid">
-    <em>Compila le informazioni richieste per procedere.</em>
+  <div class="has-warning" data-bind="ifnot: valid">
+    <em class="help-block">Compila le informazioni richieste per procedere.</em>
   </div>
   <!--ko ifnot: $data.isFinal-->
   <div data-bind="if: valid">
     <!--ko with: $root-->
-      <button style="float:left" data-bind="visible: !isFirst() && !lock(), click: back">Indietro</button>
-      <button style="float:right" data-bind="visible: isLast() && !lock(), click: submit">Invia</button>
-      <button style="float:right" data-bind="visible: !isLast(), click: next">Avanti</button>
+      <button class="btn btn-default" data-bind="visible: !isFirst() && !lock(), click: back">Indietro</button>
+      <button class="btn btn-primary" data-bind="visible: !isLast(), click: next">Avanti</button>
+      <button class="btn btn-primary" data-bind="visible: isLast() && !lock(), click: submit">Invia</button>
     <!--/ko-->
   </div>
   <!--/ko-->
 </div>
 <div style="cursor:wait;z-index:999;position:fixed;top:0;right:0;bottom:0;left:0;display:none;" data-bind="style:{display: lock()?'block':'none'}"></div>
 <script type="text/html" id="contactInformation">
-  <label for="contatto_nome"><strong>Nome:&nbsp;</strong></label>
-  <input type="text" id="contatto_nome" class="om-line-input" data-bind="textInput: cliente.nome">
-  <h3>Appartieni a un GAS?<!--/h3-->
-    <input type="radio" id="gas_yes" data-bind="checked: isGasMember, checkedValue: true"> <label for="gas_yes">S&Igrave;</label> <!--TODO: data-bind-->
-    <input type="radio" id="gas_no" data-bind="checked: isGasMember, checkedValue: false"> <label for="gas_no">NO</label>
-  </h3>
-  <p>
-    <div class="om-gas-info" data-bind="if: isGasMember">
-      <label for="gas_id"><strong>Quale?&nbsp;</strong></label>
-      <select id="gas_id" data-bind="value: id_gas, options: gasList, optionsValue: 'id', optionsText: 'nome', optionsCaption: ''"></select>
-      <div data-bind="if:id_gas">
-        <!--ko with: gas-->
-          <strong>Zona:</strong> <!--ko text: area--><!--/ko--><br>
-          <strong>Referente:</strong> <!--ko text: nome_contatto--><!--/ko-->
-        <!--/ko-->
-      </div>
+  <div class="form-group">
+    <label for="contatto_nome" class="control-label">Nome:</label>
+    <input type="text" id="contatto_nome" class="form-control" data-bind="textInput: cliente.nome">
+  </div>
+  <!--ko with: cliente-->
+    <div class="form-group" data-bind="css:{'has-error':!telefonoIsValid()}">
+      <label for="contatto_telefono" class="control-label">Telefono:</label>
+      <input type="text" id="contatto_telefono" class="form-control" data-bind="textInput: telefono">
+      <span id="contatto_telefono_error" class="help-block" data-bind="visible: !telefonoIsValid()">Il numero di telefono pu&ograve; contenere solo numeri, spazi e trattini</span>
     </div>
-    <div class="om-no-gas-info" data-bind="if: isGasMember() === false">
-      <!--ko with: cliente-->
-        <div>
-          <label for="contatto_indirizzo"><strong>Indirizzo:</strong></label><br>
-          <textarea id="contatto_indirizzo" class="om-txt-info" data-bind="textInput: indirizzo"></textarea>
+  <!--/ko-->
+  <div class="form-group">
+    <label class="control-label">Appartieni a un GAS?<label>
+    <label for="gas_yes" class="radio-inline">
+      <input type="radio" id="gas_yes" data-bind="checked: isGasMember, checkedValue: true"> S&Igrave;
+    </label>
+    <label for="gas_no" class="radio-inline">
+      <input type="radio" id="gas_no" data-bind="checked: isGasMember, checkedValue: false"> NO
+    </label>
+  </div>
+  <div class="form-group" data-bind="if: isGasMember">
+    <label for="gas_id" class="control-label">Quale?</label>
+    <select id="gas_id" class="form-control" data-bind="value: id_gas, options: gasList, optionsValue: 'id', optionsText: 'nome', optionsCaption: ''"></select>
+    <div class="form-horizontal" data-bind="if: id_gas">
+      <!--ko with: gas-->
+        <div class="row">
+          <label class="control-label col-xs-2">Zona:</label>
+          <span class="form-control-static col-xs-10" data-bind="text: area"></span>
         </div>
-        <div>
-          <label for="contatto_telefono"><strong>Telefono:</strong></label><br>
-          <input type="text" id="contatto_telefono" data-bind="textInput: telefono">
-          <span id="contatto_telefono_error" class="errore" data-bind="visible: !telefonoIsValid()">Il numero di telefono pu&ograve; contenere solo numeri, spazi e trattini</span>
+        <div class="row">
+          <label class="control-label col-xs-2">Referente:</label>
+          <span class="form-control-static col-xs-10" data-bind="text: nome_contatto"></span>
         </div>
       <!--/ko-->
     </div>
-  </p>
+  </div>
+  <div data-bind="if: (isGasMember() === false)">
+    <!--ko with: cliente-->
+      <div class="form-group">
+        <label for="contatto_indirizzo" class="control-label">Indirizzo:</label>
+        <textarea id="contatto_indirizzo" class="form-control" data-bind="textInput: indirizzo"></textarea>
+      </div>
+    <!--/ko-->
+  </div>
 </script>
 <script type="text/html" id="products">
-  <h3 data-bind="text: title"></h3>
-  <em style="float:right">Attenzione: i prezzi totali indicati sono indicativi.</em>
-  <table class="om-product-table">
-    <tbody data-bind="foreach: products">
-      <tr>
-        <td class="om-field-product-name" data-bind="css:{'om-has-reference-page': $data.pagina}">
-          <a target="om_ref_page" data-bind="text: nome, attr:{href: $data.pagina || null}"></a>
+  <h3 class="clearfix"><!--ko text: title--><!--/ko--> 
+    <small><em class="pull-right">Attenzione: i prezzi totali riportati sono indicativi.</em></small>
+  </h3>
+  <div class="form-horizontal">
+    <!--ko foreach: products-->
+      <div class="row row-bordered form-group">
+        <label data-bind="attr:{for: 'om_qty_'+$data.id}">
+          <!--ko if: $data.pagina != null--><a data-bind="attr:{href: pagina}, text: nome"></a><!--/ko-->
+          <!--ko if: $data.pagina == null--><!--ko text: nome--><!--/ko--><!--/ko-->
           <!--ko if:provenienza--> &mdash; <!--ko text: provenienza--><!--/ko--><!--/ko-->
-        </td>
-        <td class="om-field-unit-price"><!--ko text: prezzoDisplay--><!--/ko--> &euro;/<span class="om-unita-misura" data-bind="text: unitaMisuraAbbr"></span></td>
-        <td class="om-field-qty"><input type="text" class="small" data-bind="textInput: qty"><span class="om-unita-misura" data-bind="text: unita_misura_plurale"></span></td>
-        <td class="om-field-tot-price" data-bind="html: finalPrice"></td>
-      </tr>
-    </tbody>
-    <tbody>
-      <tr>
-        <th class="om-label-total" colspan="3">Totale <!--ko text: typology--><!--/ko--></th>
-        <td class="om-field-tot-gen-price om-field-tot-price" data-bind="html: subTotal"></td>
-      </tr>
-      <tr>
-        <th class="om-label-total" colspan="3">Totale generale</th>
-        <td class="om-field-tot-gen-price om-field-tot-price" data-bind="html: $root.grandTotal"></td>
-      </tr>
-    </tbody>
-  </table>
-  <p>
-    <em>Note:</em><br>
-    <textarea class="om-txt-info" data-bind="textInput: $root.notes"></textarea>
-  </p>
-</script>
-<script type="text/html" id="om_reference_page_hover">
-  <div class="om-ref-page-overlay" style="position:absolute">
-    <img class="om-ref-page-image">
+        </label>
+        <div class="form-control-static col-xs-3 text-right">
+          <!--ko text: prezzoDisplay--><!--/ko--> &euro;/<span class="om-unita-misura" data-bind="text: unitaMisuraAbbr"></span>
+        </div>
+        <div class="col-xs-5 col-sm-3">
+          <div class="input-group">
+            <span class="input-group-addon" data-bind="text: unita_misura_plurale"></span>
+            <input type="text" class="form-control" data-bind="attr:{id: 'om_qty_'+$data.id}, textInput: qty">
+          </div>
+        </div>
+        <div class="form-control-static col-xs-4 col-sm-3 text-right" data-bind="html: finalPrice"></div>
+      </div>
+    <!--/ko-->
+    <div class="row row-bordered form-group text-right">
+      <label class="control-label col-xs-8 col-sm-6">Totale <!--ko text: typology--><!--/ko--></label>
+      <span class="form-control-static col-xs-4 col-sm-3" data-bind="html: subTotal"></span>
+    </div>
+    <div class="row row-bordered form-group text-right">
+      <label class="control-label col-xs-8 col-sm-6">Totale generale</label>
+      <span class="form-control-static col-xs-4 col-sm-3" data-bind="html: $root.grandTotal"></span>
+    </div>
+    <div class="row form-group">
+      <label for="om-txt-note">Note:</label>
+      <textarea id="om-txt-note" class="form-control" data-bind="textInput: $root.notes"></textarea>
+    </div>
   </div>
 </script>
 <script type="text/html" id="summary">
-  <form>
-    <table class="om-product-table">
-      <thead>
-        <tr>
-          <th colspan="2"></th>
-          <th>Q.t&agrave;</th>
-          <th>Prezzo</th>
-        </tr>
-      </thead>
-      <tbody data-bind="foreach: typologies">
-        <tr>
-          <th class="om-head-typology" colspan="4" data-bind="text: title"></th>
-        </tr>
-        <!--ko foreach: products-->
-        <tr>
-          <td class="om-field-product-name"><!--ko text: nome--><!--/ko--></td>
-          <td class="om-field-unit-price"><!--ko text: prezzoDisplay--><!--/ko--> &euro;/<span class="om-unita-misura" data-bind="text: unitaMisuraAbbr"></span></td>
-          <td class="om-field-qty">
-            <span data-bind="if: qtyFloat">
-              <!--ko text: qty--><!--/ko--> <span class="om-unita-misura" data-bind="text: unita_misura_plurale"></span>
-            </span>
-          </td>
-          <td class="om-field-tot-price" data-bind="html: finalPrice"></td>
-        </tr>
-        <!--/ko-->
-      </tbody>
-      <tfoot>
-        <tr>
-          <th class="om-label-total" colspan="3">Totale &nbsp;</th>
-          <td class="om-field-tot-gen-price om-field-tot-price" data-bind="html: totalPrice"></td>
-        </tr>
-      </tfoot>
-    </table>
-    <p>
-      <em>Note:</em><br>
-      <textarea class="om-txt-info" name="note" data-bind="textInput: $root.notes"></textarea>
-    </p>
-    <h3>I tuoi dati:</h3>
-    <p data-bind="with: contacts">
-      <strong>Nome: </strong><!--ko text: cliente.nome--><!--/ko--><br>
-      <!--ko if: gas-->
-        <!--ko with: gas-->
-          <strong>GAS: </strong><!--ko text: nome--><!--/ko--><br>
-          <strong>Zona: </strong><!--ko text: area--><!--/ko--><br>
-          <strong>Referente: </strong><!--ko text: nome_contatto--><!--/ko-->
-        <!--/ko-->
+  <table class="table om-product-table">
+    <thead>
+      <tr>
+        <th colspan="2"></th>
+        <th>Q.t&agrave;</th>
+        <th>Prezzo</th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: typologies">
+      <tr>
+        <th class="om-head-typology" colspan="4" data-bind="text: title"></th>
+      </tr>
+      <!--ko foreach: products-->
+      <tr>
+        <td class="om-field-product-name"><!--ko text: nome--><!--/ko--></td>
+        <td class="om-field-unit-price"><!--ko text: prezzoDisplay--><!--/ko--> &euro;/<span class="om-unita-misura" data-bind="text: unitaMisuraAbbr"></span></td>
+        <td class="om-field-qty">
+          <span data-bind="if: qtyFloat">
+            <!--ko text: qty--><!--/ko--> <span class="om-unita-misura" data-bind="text: unita_misura_plurale"></span>
+          </span>
+          <span data-bind="if: qtyText">
+            <!--ko text: qty--><!--/ko-->
+          </span>
+        </td>
+        <td class="om-field-tot-price" data-bind="html: finalPrice"></td>
+      </tr>
       <!--/ko-->
-      <!--ko ifnot: gas-->
-        <!--ko with: cliente-->
-          <strong>Indirizzo: </strong><!--ko text: indirizzo--><!--/ko--><br>
-          <strong>Telefono: </strong><!--ko text: telefono--><!--/ko--><br>
-        <!--/ko-->
+    </tbody>
+    <tfoot>
+      <tr>
+        <th class="om-label-total" colspan="3">Totale &nbsp;</th>
+        <td class="om-field-tot-gen-price om-field-tot-price" data-bind="html: totalPrice"></td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="row form-group">
+    <label for="om-txt-note">Note:</label>
+    <textarea id="om-txt-note" class="form-control" data-bind="textInput: $root.notes"></textarea>
+  </div>
+  <h3>I tuoi dati:</h3>
+  <div class="form-horizontal" data-bind="with: contacts">
+    <div class="row">
+      <label class="control-label col-xs-2">Nome:</label>
+      <span class="form-control-static col-xs-8" data-bind="text: cliente.nome"></span>
+    </div>
+    <div class="row">
+      <label class="control-label col-xs-2">Telefono:</label>
+      <span class="form-control-static col-xs-8" data-bind="text: cliente.telefono"></span>
+    </div>
+    <!--ko ifnot: gas-->
+      <div class="row">
+        <label class="control-label col-xs-2">Indirizzo:</label>
+        <span class="form-control-static col-xs-8" data-bind="text: cliente.indirizzo"></span>
+      </div>
+    <!--/ko-->
+    <!--ko if: gas-->
+      <!--ko with: gas-->
+        <div class="row">
+          <label class="control-label col-xs-2">GAS:</label>
+          <span class="form-control-static col-xs-8" data-bind="text: nome"></span>
+        </div>
+        <div class="row">
+          <label class="control-label col-xs-2">Zona:</label>
+          <span class="form-control-static col-xs-8" data-bind="text: area"></span>
+        </div>
+        <div class="row">
+          <label class="control-label col-xs-2">Referente:</label>
+          <span class="form-control-static col-xs-8" data-bind="text: nome_contatto"></span>
+        </div>
       <!--/ko-->
-    </p>
-  </form>
+    <!--/ko-->
+    <br>
+  </div>
 </script>
 <script type="text/html" id="final">
   <!--ko with: result-->

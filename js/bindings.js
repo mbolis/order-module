@@ -1,3 +1,17 @@
+if (!String.prototype.trim) {
+  String.prototype.trim = function () {
+    return this.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
+  };
+}
+if (!window.addEventListener) {
+  window.addEventListener = function(evName, cb) {
+    window.attachEvent('on' + evName, cb);
+  };
+}
+Number.isNaN = Number.isNaN || function(value) {
+    return typeof value === "number" && isNaN(value);
+}
+
 function Page(template) {
   this.template = template;
   this.onRender = function() {};
@@ -22,7 +36,14 @@ function ContactPage(gasList) {
     var telefono = this.telefono().trim();
     return !telefono || RE_TELEFONO.test(telefono);
   }, this.cliente);
+
   this.isGasMember = ko.observable();
+  this.isGasMember.subscribe(function(isGasMember) {
+    if (!isGasMember) {
+      this.id_gas(null);
+    }
+  }, this);
+
   this.gasList = ko.observableArray(gasList);
   this.id_gas = ko.observable();
   this.gas = ko.computed(function() {
@@ -39,10 +60,13 @@ function ContactPage(gasList) {
     if (!this.cliente.nome().trim()) {
       return false;
     }
+    if (!this.cliente.telefono() || !this.cliente.telefonoIsValid()) {
+      return false;
+    }
     if (this.isGasMember()) {
       return !!this.id_gas();
     } else {
-      return this.cliente.indirizzo().trim() && this.cliente.telefono() && this.cliente.telefonoIsValid();
+      return !!this.cliente.indirizzo().trim();
     }
   }, this);
 }
@@ -91,11 +115,15 @@ function Product(p) {
   }, this);
   this.qty = ko.observable('');
   this.valid = ko.computed(function() {
-    return RE_QTY.test(this.qty().trim());
+    return true; // RE_QTY.test(this.qty().trim());
   }, this);
   this.qtyFloat = ko.computed(function() {
     var qty = this.qty().trim();
-    return qty ? parseFloat(qty.replace(/,/, '.')) : 0;
+    return qty && RE_QTY.test(qty) ? parseFloat(qty.replace(/,/, '.')) : 0;
+  }, this);
+  this.qtyText = ko.computed(function() {
+    var qty = this.qty().trim();
+    return !qty || RE_QTY.test(qty) ? '' : qty; // Qty input is garbage, not a number!
   }, this);
   this.finalPriceFloat = ko.computed(function() {
     return this.prezzo * this.qtyFloat();
@@ -165,11 +193,11 @@ function ViewModel() {
   this.next = function() {
     pages()[0].visited = true;
     setPage(page() + 1);
-    window.scrollTo(0, $('.entry').prevAll('h2').offset().top - 32);
+    //window.scrollTo(0, jQuery('.entry').prevAll('h2').offset().top - 32);
   };
   this.back = function() {
     setPage(page() - 1);
-    window.scrollTo(0, $('.entry').prevAll('h2').offset().top - 32);
+    //window.scrollTo(0, jQuery('.entry').prevAll('h2').offset().top - 32);
   };
   this.submit = function(viewModel) {
     viewModel.lock(true);
@@ -179,25 +207,27 @@ function ViewModel() {
       client : {
         username : username,
         note : this.notes(),
-        nome : contactPage.cliente.nome()
+        nome : contactPage.cliente.nome(),
+        telefono : contactPage.cliente.telefono()
       }
     };
     if (contactPage.id_gas()) {
       data.client.id_gas = contactPage.id_gas();
     } else {
-      data.client.indirizzo = contactPage.cliente.indirizzo;
-      data.client.telefono = contactPage.cliente.telefono;
+      data.client.indirizzo = contactPage.cliente.indirizzo();
     }
 
     var products = [], prodPages = productsPages();
     for (var t in prodPages) {
       var typology = prodPages[t].products;
       for (var p in typology) {
-        var product = typology[p];
-        if (product.qtyFloat()) {
+        var product = typology[p], qty = product.qtyFloat(), qtyText = product.qtyText();
+        if (qty || qtyText) {
           products.push({
             id_prodotto_ordine : product.id_prodotto_ordine,
-            quantita : product.qtyFloat() });
+            quantita : qty,
+            quantita_testo : qtyText
+	  });
         }
       }
     }

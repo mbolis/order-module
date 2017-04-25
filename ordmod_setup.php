@@ -56,6 +56,7 @@ function om_install() {
     id_ordine_cliente int(11) NOT NULL,
     id_prodotto_ordine int(11) NOT NULL,
     quantita decimal(11,3) NOT NULL,
+    quantita_testo varchar(255),
     PRIMARY KEY  (id)
   ) $charset_collate;";
 
@@ -99,9 +100,9 @@ function om_install() {
   # FIXME : remove me after next update!
   $wpdb->query("
     ALTER TABLE $product_table
-    MODIFY COLUMN tipologia varchar(100) NOT NULL,
-    MODIFY COLUMN unita_misura varchar(100) NOT NULL,
-    MODIFY COLUMN unita_misura_plurale varchar(100) NOT NULL
+    MODIFY COLUMN tipologia varchar(255) NOT NULL,
+    MODIFY COLUMN unita_misura varchar(255) NOT NULL,
+    MODIFY COLUMN unita_misura_plurale varchar(255) NOT NULL
   ");
 }
 
@@ -181,6 +182,14 @@ function om_save_order($ordine, $prodotti) {
     $wpdb->query("UPDATE $product_table SET attivo=0");
 
     $product_order_table = $wpdb->prefix . 'om_prodotto_ordine';
+    $wpdb->query(
+      $wpdb->prepare("
+        DELETE FROM $product_order_table
+        WHERE id_ordine = %d ",
+        $id_ordine
+      )
+    );
+
     $inserted = 0;
     foreach ($prodotti as $prodotto) {
       // update prodotti with new default values
@@ -234,8 +243,8 @@ function om_get_dt_apertura_ordine($id_ordine, $format='%d/%m/%Y %H:%i') {
       SELECT DATE_FORMAT(dt_apertura, %s)
       FROM $order_table
       WHERE id = %d ",
-      $id_ordine,
-      $format
+      $format,
+      $id_ordine
     )
   );
 }
@@ -297,15 +306,17 @@ function om_get_all_client_orders_full($order_id) {
       SELECT
         cli.id AS id_cliente,
         cli.nome AS nome_cliente,
+        cli.telefono AS telefono_cliente,
         gas.id AS id_gas,
         gas.nome AS nome_gas,
         gas.nome_contatto AS nome_contatto_gas,
         COALESCE(gas.area, cli.area) AS zona,
         COALESCE(gas.indirizzo, cli.indirizzo) AS indirizzo,
-        COALESCE(gas.telefono, cli.telefono) AS telefono,
+        gas.telefono AS telefono_gas,
         cli.note,
         ro.id_prodotto_ordine,
-        ro.quantita
+        ro.quantita,
+        ro.quantita_testo
       FROM $client_order_table cli
       INNER JOIN $order_row_table ro ON (ro.id_ordine_cliente=cli.id)
       LEFT OUTER JOIN $gas_table gas ON (gas.id=cli.id_gas)
@@ -327,17 +338,21 @@ function om_get_all_client_orders_full($order_id) {
       $order = array(
         'id_cliente' => $client_id,
         'nome_cliente' => $row['nome_cliente'],
+        'telefono_cliente' => $row['telefono_cliente'],
         'id_gas' => $row['id_gas'],
         'nome_gas' => $row['nome_gas'],
         'nome_contatto_gas' => $row['nome_contatto_gas'],
+        'telefono_gas' => $row['telefono_gas'],
         'zona' => $row['zona'],
         'indirizzo' => $row['indirizzo'],
-        'telefono' => $row['telefono'],
         'note' => $row['note'],
         'righe_ordine' => array(),
       );
     }
-    $order['righe_ordine'][$row['id_prodotto_ordine']] = $row['quantita'];
+    $order['righe_ordine'][$row['id_prodotto_ordine']] = array(
+      'quantita'       => $row['quantita'],
+      'quantita_testo' => $row['quantita_testo'],
+    );
   }
   $client_orders[] = $order;
 
@@ -357,13 +372,14 @@ function om_get_client_order_full($client_order_id) {
     $wpdb->prepare("
       SELECT
         cli.nome AS nome_cliente,
+        cli.telefono AS telefono_cliente,
         usr.user_email AS email_cliente,
         gas.id AS id_gas,
         gas.nome AS nome_gas,
         gas.nome_contatto AS nome_contatto_gas,
         COALESCE(gas.area, cli.area) AS area,
         COALESCE(gas.indirizzo, cli.indirizzo) AS indirizzo,
-        COALESCE(gas.telefono, cli.telefono) AS telefono,
+        gas.telefono AS telefono_gas,
         cli.id_ordine,
         cli.note,
         ord.dt_apertura,
@@ -390,7 +406,8 @@ function om_get_client_order_full($client_order_id) {
         p.provenienza,
         po.prezzo,
         p.unita_misura,
-        ro.quantita
+        ro.quantita,
+        ro.quantita_testo
       FROM $order_product_table po
       INNER JOIN $product_table p ON (p.id=po.id_prodotto)
       LEFT OUTER JOIN $order_row_table ro ON (ro.id_prodotto_ordine=po.id)
@@ -426,20 +443,20 @@ function om_save_client_order($data) {
   $insert_data = array(
     'username'    => $client_order['username'],
     'nome'        => $client_order['nome'],
+    'telefono'    => $client_order['telefono'],
     'note'        => $client_order['note'],
     'id_ordine'   => $order_id,
     'dt_modifica' => date('Y-m-d H:i:s'),
   );
-  $insert_format = array('%s', '%s', '%s', '%d');
+  $insert_format = array('%s', '%s', '%s', '%s', '%d', '%s');
+
   if ($client_order['id_gas']) {
     $insert_data['id_gas'] = $client_order['id_gas'];
     $insert_format[] = '%d';
   } else {
     $insert_data['area'] = $client_order['area'];
-    $insert_format[] = '%s';
     $insert_data['indirizzo'] = $client_order['indirizzo'];
     $insert_format[] = '%s';
-    $insert_data['telefono'] = $client_order['telefono'];
     $insert_format[] = '%s';
   }
 
@@ -456,21 +473,30 @@ function om_save_client_order($data) {
   $client_order_id = $wpdb->insert_id;
   $order_row_table = $wpdb->prefix . 'om_riga_ordine';
   foreach ($data['products'] as $x => $row) {
+    $row_data = array(
+      'id_ordine_cliente'  => $client_order_id,
+      'id_prodotto_ordine' => $row['id_prodotto_ordine'],
+      'quantita'           => $row['quantita'],
+    );
+    $row_format = array(
+      'id_ordine_cliente'  => '%d',
+      'id_prodotto_ordine' => '%d',
+      'quantita'           => '%f',
+    );
+    // Add quantita_testo if present
+    if ($row['quantita_testo']) {
+      $row_data['quantita_testo'] = $row['quantita_testo'];
+      $row_format['quantita_testo'] = '%s';
+    }
+
+    // Insert current row
     $row_insert_ok = $wpdb->insert(
       $order_row_table,
-      array(
-        'id_ordine_cliente'  => $client_order_id,
-        'id_prodotto_ordine' => $row['id_prodotto_ordine'],
-        'quantita'           => $row['quantita'],
-      ),
-      array(
-        'id_ordine_cliente'  => '%d',
-        'id_prodotto_ordine' => '%d',
-        'quantita'           => '%f',
-      )
+      $row_data,
+      $row_format
     );
 
-    if (!$row_insert_ok) {
+    if (!$row_insert_ok) { // Kind-of rollback
       $wpdb->delete(
         $order_row_table,
         array('id_ordine_cliente' => $client_order_id),
