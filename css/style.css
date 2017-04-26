@@ -25,8 +25,34 @@
   border-bottom : 1px solid #ccc;
 }
 
+.om-label-extra {
+  margin : -2px 0 0 1em;
+  padding : 2px 0 0 28px;
+  background : url("extra-tag.png") no-repeat;
+  color : red;
+  font-weight : bold;
+}
+
 /* FIXME : Hack to hide leftover menu pieces */
 #header-sx, #headerimg, #furgone {
   height : 368px;
   overflow : hidden;
+}
+
+/* Stanley WP */
+section.post-entry {
+	padding : 0 1em;
+}
+#ww > .container {
+  opacity : 0.95;
+}
+#ww header {
+  padding : 1px;
+}
+nav > .navbar-inverse {
+  background-color : #8cc783;
+  border-color : #0e7a2f;
+}
+footer {
+  display : none;
 }

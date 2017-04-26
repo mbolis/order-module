@@ -130,6 +130,7 @@ function om_nuke_options() {
 
     delete_option('om_main_form_page');
     delete_option('om_main_form_splash');
+    delete_option('om_background_image');
     delete_option('om_product_typologies');
     delete_option('om_product_units');
 
@@ -685,6 +686,7 @@ function om_set_options() {
 
     add_option('om_main_form_page', 'om_main_form');
     add_option('om_main_form_splash', '');
+    add_option('om_background_image', '');
     add_option('om_product_typologies', '');
     add_option('om_product_units', '');
 
