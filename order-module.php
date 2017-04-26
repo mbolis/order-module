@@ -3,7 +3,7 @@
  * Plugin Name: Order Module
  * Plugin URI: 
  * Description: Create, show and handle an order module with your products.
- * Version: 0.5.0
+ * Version: 0.6.0
  * Author: Marco Bolis
  * Author URI:
  * License: GPL3
@@ -129,6 +129,8 @@ function om_options() {
       $errors['main_form_splash'] = 'Selezionare un valore dalla lista.';
     }
 
+	$background_image = trim($_POST['background_image']);
+
     $product_typologies = preg_split('/\\s*,\\s*/', stripslashes(trim($_POST['product_typologies'])));
     if (!$product_typologies) {
       $errors['product_typologies'] = 'Occorre specificare almeno una tipologia.';
@@ -189,6 +191,7 @@ function om_options() {
         'post_name' => $main_form_page,
       ));
       update_option('om_main_form_splash', $main_form_splash);
+      update_option('om_background_image', $background_image);
       update_option('om_product_typologies', $product_typologies);
       update_option('om_product_units', $product_units);
 
@@ -206,6 +209,7 @@ function om_options() {
   } else {
     $main_form_page = get_option('om_main_form_page');
     $main_form_splash = get_option('om_main_form_splash');
+    $background_image = get_option('om_background_image');
     $product_typologies = get_option('om_product_typologies');
     $product_units = get_option('om_product_units');
     $notification_mail_subject = get_option('om_notification_mail_subject');
@@ -482,6 +486,12 @@ function om_order_form_data($content) {
     if ($splash_page) {
       $content .= '<script type="text/html" id="splash">' . wpautop($splash_page->post_content) . '</script>';
     }
+  
+	$background_image = get_option('om_background_image');
+	if ($background_image) {
+	  $content .= "<script>jQuery(function(){jQuery('#ww').css('background','url(\"$background_image\")')});</script>";
+	}
+
     $content .= '<script type="text/plain" id="om_message_form_success">' . get_option('om_message_form_success') . '</script>';
     $content .= '<script type="text/plain" id="om_message_form_expired">' . get_option('om_message_form_expired') . '</script>';
 
@@ -498,9 +508,9 @@ function om_order_form_data($content) {
         $prod_page = get_post($product['id_pagina']);
         if ($prod_page) {
           $product['pagina'] = get_site_url().'/'.$prod_page->post_name;
-          if (preg_match('/<img\s+[^>]*?src=["\']?([^"\'>]+)/i', $prod_page->post_content, $match)) {
+          /*if (preg_match('/<img\s+[^>]*?src=["\']?([^"\'>]+)/i', $prod_page->post_content, $match)) {
             $product['immagine'] = $match[1];
-          }
+		  }*/
         }
       }
       $products_hash[$product['tipologia']][] = $product;
@@ -525,6 +535,7 @@ function om_order_form_data($content) {
 
 add_action('admin_enqueue_scripts', 'om_admin_scripts');
 function om_admin_scripts() {
+  wp_enqueue_media();
   wp_enqueue_style('om-admin', plugins_url('css/admin.css', __FILE__));
   wp_enqueue_style('jquery-ui', plugins_url('jquery-ui/jquery-ui.css', __FILE__));
   wp_enqueue_style('jquery-ui.timepicker', plugins_url('jquery-ui/jquery-ui.timepicker.css', __FILE__));

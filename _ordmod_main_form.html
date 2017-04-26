@@ -11,6 +11,7 @@
       <button class="btn btn-primary" data-bind="visible: isLast() && !lock(), click: submit">Invia</button>
     <!--/ko-->
   </div>
+  <br>
   <!--/ko-->
 </div>
 <div style="cursor:wait;z-index:999;position:fixed;top:0;right:0;bottom:0;left:0;display:none;" data-bind="style:{display: lock()?'block':'none'}"></div>
@@ -70,7 +71,8 @@
         <label data-bind="attr:{for: 'om_qty_'+$data.id}">
           <!--ko if: $data.pagina != null--><a data-bind="attr:{href: pagina}, text: nome"></a><!--/ko-->
           <!--ko if: $data.pagina == null--><!--ko text: nome--><!--/ko--><!--/ko-->
-          <!--ko if:provenienza--> &mdash; <!--ko text: provenienza--><!--/ko--><!--/ko-->
+          <!--ko if: provenienza--> &mdash; <!--ko text: provenienza--><!--/ko--><!--/ko-->
+		  <!--ko if: $data.extra == 1--><em class="om-label-extra" data-bind="text: extra_testo"></em><!--/ko-->
         </label>
         <div class="form-control-static col-xs-3 text-right">
           <!--ko text: prezzoDisplay--><!--/ko--> &euro;/<span class="om-unita-misura" data-bind="text: unitaMisuraAbbr"></span>
