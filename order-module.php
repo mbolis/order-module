@@ -3,7 +3,7 @@
  * Plugin Name: Order Module
  * Plugin URI: 
  * Description: Create, show and handle an order module with your products.
- * Version: 0.6.0
+ * Version: 0.6.1
  * Author: Marco Bolis
  * Author URI:
  * License: GPL3
